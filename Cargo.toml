@@ -15,5 +15,6 @@ categories = ["date-and-time"]
 
 [dependencies]
 chrono = "0.4.38"
+libpt = { version = "0.6.0", features = ["cli"] }
 ratatui = "0.27.0"
 tui-big-text = "0.4.5"
