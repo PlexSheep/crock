@@ -5,6 +5,8 @@ use chrono::SubsecRound;
 use ratatui::crossterm::event::{
     self, poll, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers,
 };
+use ratatui::layout::Alignment;
+use ratatui::widgets::{Block, Padding};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
@@ -36,15 +38,39 @@ fn main() -> Result<(), io::Error> {
             .collect();
         let fdate: String = splits[0].clone();
         let ftime: String = splits[1].clone();
-        terminal.draw(|f| {
+        terminal.draw(|frame| {
+            let root = frame.size();
+            let space = Block::bordered()
+                .padding(Padding::new(
+                    root.width / 8,
+                    root.width / 8,
+                    root.height / 8,
+                    root.height / 8,
+                ))
+                .title(env!("CARGO_PKG_NAME"))
+                .title_bottom(env!("CARGO_PKG_VERSION"))
+                .title_alignment(Alignment::Center)
+                .title_style(Style::new().bold());
+            let a = space.inner(root);
+            let parts = partition(a);
             let timew = tui_big_text::BigText::builder()
                 .style(Style::new().red())
                 .lines(vec![ftime.into()])
+                .alignment(Alignment::Center)
                 .build()
                 .expect("could not render time widget");
-            let datew = Paragraph::new(fdate).blue();
-            f.render_widget(datew, centered_rect(f.size(), 45, 80));
-            f.render_widget(timew, centered_rect(f.size(), 45, 60));
+            let datew = Paragraph::new(fdate)
+                .blue()
+                .alignment(Alignment::Left)
+                .block(Block::new().padding(Padding::new(
+                    parts.0.left(),
+                    parts.0.right() / 3,
+                    0,
+                    0,
+                )));
+            frame.render_widget(space, root);
+            frame.render_widget(timew, parts.1);
+            frame.render_widget(datew, parts.0);
         })?;
         if poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -71,27 +97,11 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-/// # Usage
-///
-/// ```rust
-/// let rect = centered_rect(f.size(), 50, 50);
-/// ```
-fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
-    let popup_layout = Layout::default()
+fn partition(r: Rect) -> (Rect, Rect) {
+    let part = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
+        .constraints([Constraint::Percentage(13), Constraint::Min(0)])
         .split(r);
 
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
+    (part[0], part[1])
 }
