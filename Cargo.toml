@@ -14,6 +14,7 @@ categories = ["date-and-time"]
 
 
 [dependencies]
+anyhow = "1.0.86"
 chrono = "0.4.38"
 libpt = { version = "0.6.0", features = ["cli"] }
 ratatui = "0.27.0"
