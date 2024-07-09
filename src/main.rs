@@ -1,6 +1,7 @@
 use std::io;
 
 use libpt::cli::clap::Parser;
+use libpt::log::{debug, Level, Logger};
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::crossterm::execute;
@@ -21,9 +22,10 @@ fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let clock = Clock::parse();
-    clock.run(&mut terminal)?;
+    debug!("entering clock");
+    let result = clock.run(&mut terminal);
 
+    debug!("restoring terminal");
     // restore terminal
     disable_raw_mode()?;
     execute!(
@@ -33,5 +35,6 @@ fn main() -> anyhow::Result<()> {
     )?;
     terminal.show_cursor()?;
 
-    Ok(())
+    debug!("done");
+    result
 }
