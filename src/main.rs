@@ -3,7 +3,8 @@ use ratatui::{
     backend::CrosstermBackend,
     crossterm::event::poll,
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, Borders},
+    style::Style,
+    widgets::{Block, Borders, Paragraph},
     Terminal,
 };
 use ratatui::{
@@ -27,16 +28,24 @@ fn main() -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     loop {
-        let time = chrono::Utc::now().round_subsecs(0);
+        let raw_time = chrono::Utc::now().round_subsecs(0);
+        let splits: Vec<String> = raw_time
+            .naive_local()
+            .to_string()
+            .split_whitespace()
+            .map(str::to_string)
+            .collect();
+        let fdate: String = splits[0].clone();
+        let ftime: String = splits[1].clone();
         terminal.draw(|f| {
-            let w = ratatui::widgets::Paragraph::new(format!(
-                "{}\n\n{}",
-                time.time(),
-                time.date_naive()
-            ))
-            .centered()
-            .red();
-            f.render_widget(w, centered_rect(f.size(), 40, 20));
+            let timew = tui_big_text::BigText::builder()
+                .style(Style::new().red())
+                .lines(vec![ftime.into()])
+                .build()
+                .expect("could not render time widget");
+            let datew = Paragraph::new(fdate).blue();
+            f.render_widget(datew, centered_rect(f.size(), 45, 80));
+            f.render_widget(timew, centered_rect(f.size(), 45, 60));
         })?;
         if poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
