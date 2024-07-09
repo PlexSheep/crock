@@ -2,7 +2,7 @@
 name = "crock"
 version = "0.1.0"
 edition = "2021"
-publish = false
+publish = true
 authors = ["Christoph J. Scherr <software@cscherr.de>"]
 license = "MIT"
 description = "clock tui"
