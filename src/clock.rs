@@ -4,6 +4,7 @@
 use chrono::{DateTime, Datelike, Local, NaiveDateTime, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
+use libpt::cli::clap::builder::styling::Color;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
 use libpt::log::{debug, trace};
@@ -99,7 +100,7 @@ impl Clock {
                     if Local::now()
                         .signed_duration_since(self.last_reset.unwrap())
                         .num_seconds()
-                        == 0
+                        >= len.as_secs()
                     {
                         self.last_reset = Some(Local::now());
                     }
@@ -245,6 +246,8 @@ impl Clock {
             frame.render_widget(datew, parts[1]);
             if self.timebar_len().is_some() {
                 let timebarw = LineGauge::default()
+                    .filled_style(Style::default().blue())
+                    .unfilled_style(Style::default())
                     .block(Block::new().padding(Padding::new(
                         parts[2].left() / 10,
                         parts[2].right() / 6,
