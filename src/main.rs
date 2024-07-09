@@ -1,23 +1,22 @@
+#![warn(clippy::pedantic, clippy::style, clippy::nursery)]
+#![allow(clippy::question_mark_used)]
+
 use chrono::SubsecRound;
-use ratatui::{
-    backend::CrosstermBackend,
-    crossterm::event::poll,
-    layout::{Constraint, Direction, Layout, Rect},
-    style::Style,
-    widgets::{Block, Borders, Paragraph},
-    Terminal,
+use ratatui::crossterm::event::{
+    self, poll, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers,
 };
 use ratatui::{
+    backend::CrosstermBackend,
     crossterm::{
-        event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
         execute,
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     },
-    style::Stylize,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Style, Stylize},
+    widgets::Paragraph,
+    Terminal,
 };
 use std::{io, time::Duration};
-
-const TITLE: &str = "Crock";
 
 fn main() -> Result<(), io::Error> {
     // setup terminal

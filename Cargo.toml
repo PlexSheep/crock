@@ -10,6 +10,7 @@ readme = "README.md"
 homepage = "https://git.cscherr.de/PlexSheep/crock"
 repository = "https://git.cscherr.de/PlexSheep/crock"
 keywords = ["time", "clock", "tui"]
+categories = ["date-and-time"]
 
 
 [dependencies]
