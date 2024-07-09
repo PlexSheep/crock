@@ -4,7 +4,6 @@
 use chrono::{DateTime, Datelike, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
-use libpt::cli::clap::builder::styling::Color;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
 use libpt::log::{debug, trace};
