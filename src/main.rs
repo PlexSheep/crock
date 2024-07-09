@@ -27,7 +27,7 @@ fn main() -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     loop {
-        let raw_time = chrono::Utc::now().round_subsecs(0);
+        let raw_time = chrono::Local::now().round_subsecs(0);
         let splits: Vec<String> = raw_time
             .naive_local()
             .to_string()
