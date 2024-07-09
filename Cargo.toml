@@ -13,4 +13,5 @@ keywords = ["time", "clock", "tui"]
 
 
 [dependencies]
-
+chrono = "0.4.38"
+ratatui = "0.27.0"
