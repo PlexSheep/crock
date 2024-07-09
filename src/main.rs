@@ -14,6 +14,9 @@ use self::clock::Clock;
 mod clock;
 
 fn main() -> anyhow::Result<()> {
+    // setup the cli
+    let clock = Clock::parse();
+
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -21,8 +24,7 @@ fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let clock = Clock::parse();
-    clock.run(&mut terminal)?;
+    let result = clock.run(&mut terminal);
 
     // restore terminal
     disable_raw_mode()?;
@@ -33,5 +35,5 @@ fn main() -> anyhow::Result<()> {
     )?;
     terminal.show_cursor()?;
 
-    Ok(())
+    result
 }
