@@ -1,14 +1,20 @@
-use ratatui::crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
+use chrono::SubsecRound;
 use ratatui::{
     backend::CrosstermBackend,
+    crossterm::event::poll,
+    layout::{Constraint, Direction, Layout, Rect},
     widgets::{Block, Borders},
     Terminal,
 };
-use std::io;
+use ratatui::{
+    crossterm::{
+        event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    },
+    style::Stylize,
+};
+use std::{io, time::Duration};
 
 const TITLE: &str = "Crock";
 
@@ -21,20 +27,26 @@ fn main() -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     loop {
+        let time = chrono::Utc::now().round_subsecs(0);
         terminal.draw(|f| {
-            let size = f.size();
-            let block = Block::default().title(TITLE).borders(Borders::ALL);
-            let inner = block.inner(size);
-            f.render_widget(block, size);
-            let w = ratatui::widgets::Paragraph::new(format!("{}", chrono::Utc::now()));
-            f.render_widget(w, inner);
+            let w = ratatui::widgets::Paragraph::new(format!(
+                "{}\n\n{}",
+                time.time(),
+                time.date_naive()
+            ))
+            .centered()
+            .red();
+            f.render_widget(w, centered_rect(f.size(), 40, 20));
         })?;
-        if let Event::Key(key) = event::read()? {
-            if key.code == KeyCode::Char('q')
-                || key.code == KeyCode::Esc
-                || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
-            {
-                break;
+        if poll(Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()? {
+                if key.code == KeyCode::Char('q')
+                    || key.code == KeyCode::Esc
+                    || (key.modifiers.contains(KeyModifiers::CONTROL)
+                        && key.code == KeyCode::Char('c'))
+                {
+                    break;
+                }
             }
         }
     }
@@ -49,4 +61,29 @@ fn main() -> Result<(), io::Error> {
     terminal.show_cursor()?;
 
     Ok(())
+}
+
+/// # Usage
+///
+/// ```rust
+/// let rect = centered_rect(f.size(), 50, 50);
+/// ```
+fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
