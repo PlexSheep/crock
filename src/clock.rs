@@ -263,7 +263,7 @@ impl Clock {
     fn partition(r: Rect) -> Vec<Rect> {
         let part = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(43), Constraint::Min(0)])
+            .constraints([Constraint::Length(8), Constraint::Min(0)])
             .split(r);
         let subparts = Layout::default()
             .direction(Direction::Horizontal)
