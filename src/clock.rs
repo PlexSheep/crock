@@ -5,16 +5,12 @@ use libpt::cli::{args::VerbosityLevel, args::HELP_TEMPLATE, clap};
 
 use chrono::SubsecRound;
 use ratatui::crossterm::event::{
-    self, poll, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers,
+    self, poll, Event, KeyCode, KeyModifiers,
 };
 use ratatui::layout::Alignment;
 use ratatui::widgets::{Block, Padding};
 use ratatui::{
     backend::CrosstermBackend,
-    crossterm::{
-        execute,
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    },
     layout::{Constraint, Direction, Layout, Rect},
     style::{Style, Stylize},
     widgets::Paragraph,
@@ -26,7 +22,7 @@ use std::time::Duration;
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone, PartialEq, Eq, Hash)]
 #[command(help_template = HELP_TEMPLATE)]
-pub(crate) struct Clock {
+pub struct Clock {
     #[command(flatten)]
     pub verbose: VerbosityLevel,
 }
