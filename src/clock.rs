@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
 #![allow(clippy::question_mark_used)]
 
-use chrono::{DateTime, Datelike, Local, NaiveDateTime, SubsecRound, Timelike};
+use chrono::{DateTime, Datelike, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::builder::styling::Color;
@@ -38,7 +38,7 @@ impl TimeBarLength {
 
 impl Default for TimeBarLength {
     fn default() -> Self {
-        TimeBarLength::Minute
+        Self::Minute
     }
 }
 
@@ -46,7 +46,7 @@ impl Default for TimeBarLength {
 #[derive(Parser, Debug, Clone)]
 #[command(help_template = HELP_TEMPLATE, author, version)]
 #[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom"]),))]
-pub(crate) struct Clock {
+pub struct Clock {
     #[command(flatten)]
     pub verbose: VerbosityLevel,
     /// Show time since start
