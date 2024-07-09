@@ -15,7 +15,7 @@ use std::time::Duration;
 
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone, PartialEq, Eq, Hash)]
-#[command(help_template = HELP_TEMPLATE)]
+#[command(help_template = HELP_TEMPLATE, author, version)]
 pub struct Clock {
     #[command(flatten)]
     pub verbose: VerbosityLevel,
