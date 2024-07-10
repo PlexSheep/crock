@@ -14,7 +14,6 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::Terminal;
 use std::io::Stdout;
-use std::thread::{sleep, sleep_ms};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
