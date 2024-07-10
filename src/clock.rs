@@ -93,7 +93,7 @@ impl UiData {
     #[must_use]
     #[inline]
     pub fn changed(&self) -> bool {
-        //  NOTE: the timebar ratio is discarded, so that we only render the ui when the time
+        //  the timebar ratio is discarded, so that we only render the ui when the time
         //  (second) changes
         let r = self.fdate[0] != self.fdate[1] || self.ftime[0] != self.ftime[1];
         trace!("changed: {r}");
@@ -152,7 +152,6 @@ impl Clock {
     fn maybe_reset_since_zero(&mut self) {
         if let Some(len) = self.timebar_len() {
             trace!("Local Time: {}", Local::now());
-            // BUG: these resets trigger multiple times
             let since_last_reset = Local::now().signed_duration_since(self.last_reset.unwrap());
             match len {
                 TimeBarLength::Custom(_) => {
