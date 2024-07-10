@@ -14,6 +14,7 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::Terminal;
 use std::io::Stdout;
+use std::thread::{sleep, sleep_ms};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,7 +67,7 @@ pub struct Clock {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct UiData {
+pub struct UiData {
     fdate: [String; 2],
     ftime: [String; 2],
     timebar_ratio: [Option<f64>; 2],
