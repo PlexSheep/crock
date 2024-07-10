@@ -67,7 +67,7 @@ pub struct Clock {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct UiData {
+pub struct UiData {
     fdate: [String; 2],
     ftime: [String; 2],
     timebar_ratio: [Option<f64>; 2],
