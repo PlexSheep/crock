@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
             .log_to_file(true)
             .log_dir("/tmp/crock/".into())
             .set_level(clock.verbose.level())
-            .display_time(false)
+            .display_time(true)
             .build()?;
     } else {
         // no logger
