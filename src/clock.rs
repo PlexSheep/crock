@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
 #![allow(clippy::question_mark_used)]
 
-use chrono::{DateTime, Datelike, Local, SubsecRound, Timelike};
+use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
@@ -45,6 +45,8 @@ impl Default for TimeBarLength {
 #[derive(Parser, Debug, Clone)]
 #[command(help_template = HELP_TEMPLATE, author, version)]
 #[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom"]),))]
+#[allow(clippy::struct_excessive_bools)] // the struct is for cli parsing and we already use an
+                                         // ArgGroup
 pub struct Clock {
     #[command(flatten)]
     pub verbose: VerbosityLevel,
@@ -136,13 +138,15 @@ impl Clock {
 
     // FIXME: This generally works, but we want 0% at the start and 100% at the end, which does not
     // fully work. We also want 50% at the half etc. #10
+    #[allow(clippy::cast_precision_loss)] // okay, good to know, but I accept the loss. It
+                                          // shouldn't come to more than 2^52 seconds anyway
     fn timebar_ratio(&self) -> Option<f64> {
         let len = self.timebar_len()?;
         let since = (Local::now()
             .signed_duration_since(self.last_reset.unwrap())
             .num_seconds()
             + 1) as f64;
-        Some((since / len.as_secs() as f64).min(1.0).max(0.0))
+        Some((since / len.as_secs() as f64).clamp(0.0, 1.0))
     }
 
     fn maybe_reset_since_zero(&mut self) {
@@ -213,6 +217,7 @@ impl Clock {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)] // we have that to be future proof
     fn setup(&mut self) -> anyhow::Result<()> {
         self.setup_last_reset();
         Ok(())
