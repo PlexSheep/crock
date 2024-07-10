@@ -83,10 +83,9 @@ impl Clock {
 
     fn timebar_ratio(&self) -> Option<f64> {
         let len = self.timebar_len()?;
-        let since = (Local::now()
+        let since = Local::now()
             .signed_duration_since(self.last_reset.unwrap())
-            .num_seconds()
-            + 1) as f64;
+            .num_seconds() as f64;
         Some((since / len.as_secs() as f64).min(1.0).max(0.0))
     }
 
@@ -94,30 +93,29 @@ impl Clock {
         if let Some(len) = self.timebar_len() {
             trace!("Local Time: {}", Local::now());
             // BUG: these resets trigger multiple times
+            let since_last_reset = Local::now().signed_duration_since(self.last_reset.unwrap());
             match len {
                 TimeBarLength::Custom(_) => {
-                    if Local::now()
-                        .signed_duration_since(self.last_reset.unwrap())
-                        .num_seconds()
-                        >= len.as_secs()
+                    if since_last_reset.num_seconds() >= 1
+                        && since_last_reset.num_seconds() >= len.as_secs()
                     {
                         self.last_reset = Some(Local::now());
                     }
                 }
                 TimeBarLength::Minute => {
-                    if Local::now().second() == 0 {
+                    if since_last_reset.num_seconds() >= 1 && Local::now().second() == 0 {
                         self.last_reset = Some(Local::now());
                         debug!("reset the time of the time bar (minute)");
                     }
                 }
                 TimeBarLength::Hour => {
-                    if Local::now().minute() == 0 {
+                    if since_last_reset.num_minutes() >= 1 && Local::now().minute() == 0 {
                         self.last_reset = Some(Local::now());
                         debug!("reset the time of the time bar (hour)");
                     }
                 }
                 TimeBarLength::Day => {
-                    if Local::now().hour() == 0 {
+                    if since_last_reset.num_hours() >= 1 && Local::now().hour() == 0 {
                         self.last_reset = Some(Local::now());
                         debug!("reset the time of the time bar (day)");
                     }
@@ -181,7 +179,8 @@ impl Clock {
                 .collect();
             let fdate: String = splits[0].clone();
             let ftime: String = splits[1].clone();
-            self.ui(terminal, ftime, fdate)?;
+            let timebar_ratio = self.timebar_ratio();
+            self.ui(terminal, ftime, fdate, timebar_ratio)?;
             let timeout = tick_rate.saturating_sub(last_tick.elapsed());
             if poll(timeout)? {
                 if let Event::Key(key) = event::read()? {
@@ -208,6 +207,7 @@ impl Clock {
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
         ftime: String,
         fdate: String,
+        timebar_ratio: Option<f64>,
     ) -> anyhow::Result<()> {
         terminal.draw(|frame| {
             let root = frame.size();
@@ -241,10 +241,8 @@ impl Clock {
                 )));
 
             frame.render_widget(space, root);
-            frame.render_widget(clockw, parts[0]);
-            frame.render_widget(datew, parts[1]);
-            if self.timebar_len().is_some() {
-                let timebarw = LineGauge::default()
+            let timebarw: Option<LineGauge> = if self.timebar_len().is_some() {
+                let tmp = LineGauge::default()
                     .filled_style(Style::default().blue())
                     .unfilled_style(Style::default())
                     .block(Block::new().padding(Padding::new(
@@ -253,10 +251,17 @@ impl Clock {
                         0,
                         0,
                     )))
-                    .ratio(self.timebar_ratio().unwrap());
+                    .ratio(timebar_ratio.unwrap());
                 debug!("time bar ration: {}", self.timebar_ratio().unwrap());
-                frame.render_widget(timebarw, parts[2]);
-            }
+                Some(tmp)
+            } else {
+                None
+            };
+            debug!("rendering the configured widgets");
+            frame.render_widget(clockw, parts[0]);
+            frame.render_widget(&timebarw, parts[2]);
+            frame.render_widget(datew, parts[1]);
+            debug!("done rendering");
         })?;
         Ok(())
     }

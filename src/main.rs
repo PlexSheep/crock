@@ -15,6 +15,21 @@ use self::clock::Clock;
 mod clock;
 
 fn main() -> anyhow::Result<()> {
+    // setup the cli
+    let clock = Clock::parse();
+    if clock.verbose.level() >= Level::DEBUG {
+        let _logger = Logger::builder()
+            .log_to_file(true)
+            .log_dir("/tmp/crock/".into())
+            .set_level(clock.verbose.level())
+            .display_time(true)
+            .build()?;
+    } else {
+        // no logger
+    }
+    debug!("set up logger");
+
+    debug!("taking over terminal");
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
