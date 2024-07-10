@@ -92,11 +92,9 @@ impl UiData {
     #[must_use]
     #[inline]
     pub fn changed(&self) -> bool {
-        let r = 
-            self.fdate[0] != self.fdate[1] || self.ftime[0] != self.ftime[1]
-            //&& self.timebar_ratio[0] == self.timebar_ratio[1]
-            //  NOTE: the timebar ratio is discarded, so that we only render the ui when the time (second) changes
-        ;
+        //  NOTE: the timebar ratio is discarded, so that we only render the ui when the time
+        //  (second) changes
+        let r = self.fdate[0] != self.fdate[1] || self.ftime[0] != self.ftime[1];
         trace!("changed: {r}");
         r
     }
@@ -137,13 +135,14 @@ impl Clock {
         }
     }
 
-    // FIXME: This generally works, but we want 0% at the start and 100% at the end, which does not 
+    // FIXME: This generally works, but we want 0% at the start and 100% at the end, which does not
     // fully work. We also want 50% at the half etc. #10
     fn timebar_ratio(&self) -> Option<f64> {
         let len = self.timebar_len()?;
         let since = (Local::now()
             .signed_duration_since(self.last_reset.unwrap())
-            .num_seconds()+1) as f64;
+            .num_seconds()
+            + 1) as f64;
         Some((since / len.as_secs() as f64).min(1.0).max(0.0))
     }
 
