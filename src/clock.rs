@@ -65,6 +65,52 @@ pub struct Clock {
     last_reset: Option<DateTime<Local>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct UiData {
+    fdate: [String; 2],
+    ftime: [String; 2],
+    timebar_ratio: [Option<f64>; 2],
+
+    data_idx: usize,
+}
+
+impl UiData {
+    pub fn update(&mut self, fdate: String, ftime: String, timebar_ratio: Option<f64>) {
+        self.data_idx ^= 1;
+        self.fdate[self.data_idx] = fdate;
+        self.ftime[self.data_idx] = ftime;
+        self.timebar_ratio[self.data_idx] = timebar_ratio;
+    }
+
+    /// did the data change with the last update?
+    #[must_use]
+    #[inline]
+    pub fn changed(&self) -> bool {
+        !(self.fdate[0] == self.fdate[1]
+            && self.ftime[0] == self.fdate[1]
+            && self.timebar_ratio[0] == self.timebar_ratio[1])
+    }
+
+    #[must_use]
+    #[inline]
+    pub(crate) fn fdate(&self) -> &str {
+        &self.fdate[self.data_idx]
+    }
+
+    #[must_use]
+    #[inline]
+    pub(crate) fn ftime(&self) -> &str {
+        &self.ftime[self.data_idx]
+    }
+
+    #[must_use]
+    #[inline]
+    #[allow(clippy::missing_const_for_fn)] // no it's not const
+    pub(crate) fn timebar_ratio(&self) -> Option<f64> {
+        self.timebar_ratio[self.data_idx]
+    }
+}
+
 impl Clock {
     #[must_use]
     #[allow(clippy::missing_const_for_fn)]
@@ -168,6 +214,7 @@ impl Clock {
     ) -> anyhow::Result<()> {
         let tick_rate = Duration::from_millis(100);
         let mut last_tick = Instant::now();
+        let mut uidata: UiData = UiData::default();
         self.setup()?;
         loop {
             let raw_time = chrono::Local::now().round_subsecs(0);
@@ -177,10 +224,11 @@ impl Clock {
                 .split_whitespace()
                 .map(str::to_string)
                 .collect();
-            let fdate: String = splits[0].clone();
-            let ftime: String = splits[1].clone();
-            let timebar_ratio = self.timebar_ratio();
-            self.ui(terminal, ftime, fdate, timebar_ratio)?;
+
+            uidata.update(splits[0].clone(), splits[1].clone(), self.timebar_ratio());
+            if uidata.changed() {
+                self.ui(terminal, &uidata)?;
+            }
             let timeout = tick_rate.saturating_sub(last_tick.elapsed());
             if poll(timeout)? {
                 if let Event::Key(key) = event::read()? {
@@ -205,9 +253,7 @@ impl Clock {
     fn ui(
         &self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-        ftime: String,
-        fdate: String,
-        timebar_ratio: Option<f64>,
+        data: &UiData,
     ) -> anyhow::Result<()> {
         terminal.draw(|frame| {
             let root = frame.size();
@@ -226,11 +272,11 @@ impl Clock {
             let parts = Self::partition(a);
             let clockw = tui_big_text::BigText::builder()
                 .style(Style::new().red())
-                .lines(vec![ftime.into()])
+                .lines(vec![data.ftime().into()])
                 .alignment(Alignment::Center)
                 .build()
                 .expect("could not render time widget");
-            let datew = Paragraph::new(fdate)
+            let datew = Paragraph::new(data.fdate())
                 .blue()
                 .alignment(Alignment::Left)
                 .block(Block::new().padding(Padding::new(
@@ -251,19 +297,21 @@ impl Clock {
                         0,
                         0,
                     )))
-                    .ratio(timebar_ratio.unwrap());
+                    .ratio(data.timebar_ratio().unwrap());
                 debug!("time bar ration: {}", self.timebar_ratio().unwrap());
                 Some(tmp)
             } else {
                 None
             };
             debug!("rendering the configured widgets");
+            #[cfg(debug_assertions)]
+            let prerender = Instant::now();
             frame.render_widget(clockw, parts[0]);
-            sleep(500); // HACK: through black magic, this works around the problem that the time bar is
-                        // not rendered at the same time as the clock, and yes, it needs to be
-                        // 500ms for some reason, and yes it makes starting the app slower
+            trace!("{:?} after render clockw", prerender.elapsed());
             frame.render_widget(&timebarw, parts[2]);
+            trace!("{:?} after render timebarw", prerender.elapsed());
             frame.render_widget(datew, parts[1]);
+            trace!("{:?} to render all widgets", prerender.elapsed());
             debug!("done rendering");
         })?;
         Ok(())
