@@ -259,6 +259,9 @@ impl Clock {
             };
             debug!("rendering the configured widgets");
             frame.render_widget(clockw, parts[0]);
+            sleep(500); // HACK: through black magic, this works around the problem that the time bar is
+                        // not rendered at the same time as the clock, and yes, it needs to be
+                        // 500ms for some reason, and yes it makes starting the app slower
             frame.render_widget(&timebarw, parts[2]);
             frame.render_widget(datew, parts[1]);
             debug!("done rendering");
@@ -277,4 +280,8 @@ impl Clock {
 
         vec![part[0], subparts[0], subparts[1]]
     }
+}
+
+fn sleep(ms: u64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms));
 }
