@@ -80,15 +80,24 @@ impl UiData {
         self.fdate[self.data_idx] = fdate;
         self.ftime[self.data_idx] = ftime;
         self.timebar_ratio[self.data_idx] = timebar_ratio;
+        trace!(
+            "data after update: {:#?}\nconsidered changed: {}",
+            self,
+            self.changed()
+        );
     }
 
     /// did the data change with the last update?
     #[must_use]
     #[inline]
     pub fn changed(&self) -> bool {
-        !(self.fdate[0] == self.fdate[1]
-            && self.ftime[0] == self.fdate[1]
-            && self.timebar_ratio[0] == self.timebar_ratio[1])
+        let r = 
+            self.fdate[0] != self.fdate[1] || self.ftime[0] != self.ftime[1]
+            //&& self.timebar_ratio[0] == self.timebar_ratio[1]
+            //  NOTE: the timebar ratio is discarded, so that we only render the ui when the time (second) changes
+        ;
+        trace!("changed: {r}");
+        r
     }
 
     #[must_use]
@@ -127,11 +136,14 @@ impl Clock {
         }
     }
 
+    // FIXME: This generally works, but we want 0% at the start and 100% at the end, which does not 
+    // fully work.
+    // We also want 50% at the half etc
     fn timebar_ratio(&self) -> Option<f64> {
         let len = self.timebar_len()?;
-        let since = Local::now()
+        let since = (Local::now()
             .signed_duration_since(self.last_reset.unwrap())
-            .num_seconds() as f64;
+            .num_seconds()+1) as f64;
         Some((since / len.as_secs() as f64).min(1.0).max(0.0))
     }
 
@@ -255,7 +267,14 @@ impl Clock {
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
         data: &UiData,
     ) -> anyhow::Result<()> {
+        let clockw = tui_big_text::BigText::builder()
+            .style(Style::new().red())
+            .lines(vec![data.ftime().into()])
+            .alignment(Alignment::Center)
+            .build()
+            .expect("could not render time widget");
         terminal.draw(|frame| {
+            debug!("rendering the ui");
             let root = frame.size();
             let space = Block::bordered()
                 .padding(Padding::new(
@@ -269,25 +288,14 @@ impl Clock {
                 .title_alignment(Alignment::Center)
                 .title_style(Style::new().bold());
             let a = space.inner(root);
-            let parts = Self::partition(a);
-            let clockw = tui_big_text::BigText::builder()
-                .style(Style::new().red())
-                .lines(vec![data.ftime().into()])
-                .alignment(Alignment::Center)
-                .build()
-                .expect("could not render time widget");
-            let datew = Paragraph::new(data.fdate())
-                .blue()
-                .alignment(Alignment::Left)
-                .block(Block::new().padding(Padding::new(
-                    parts[1].left(),
-                    parts[1].right() / 3,
-                    0,
-                    0,
-                )));
-
             frame.render_widget(space, root);
+            let parts = Self::partition(a);
+
+            // render the timebar which counts up to the full minute and so on
+            //
+            // Will not be rendered if it is None
             let timebarw: Option<LineGauge> = if self.timebar_len().is_some() {
+                debug!("time bar ration: {:?}", data.timebar_ratio());
                 let tmp = LineGauge::default()
                     .filled_style(Style::default().blue())
                     .unfilled_style(Style::default())
@@ -298,22 +306,27 @@ impl Clock {
                         0,
                     )))
                     .ratio(data.timebar_ratio().unwrap());
-                debug!("time bar ration: {}", self.timebar_ratio().unwrap());
                 Some(tmp)
             } else {
                 None
             };
-            debug!("rendering the configured widgets");
-            #[cfg(debug_assertions)]
-            let prerender = Instant::now();
-            frame.render_widget(clockw, parts[0]);
-            trace!("{:?} after render clockw", prerender.elapsed());
+
+            // render the small date
+            let datew = Paragraph::new(data.fdate())
+                .blue()
+                .alignment(Alignment::Left)
+                .block(Block::new().padding(Padding::new(
+                    parts[1].left(),
+                    parts[1].right() / 3,
+                    0,
+                    0,
+                )));
             frame.render_widget(&timebarw, parts[2]);
-            trace!("{:?} after render timebarw", prerender.elapsed());
             frame.render_widget(datew, parts[1]);
-            trace!("{:?} to render all widgets", prerender.elapsed());
-            debug!("done rendering");
+            // render the clock
+            frame.render_widget(clockw, parts[0]);
         })?;
+        debug!("done rendering the ui");
         Ok(())
     }
     fn partition(r: Rect) -> Vec<Rect> {
@@ -328,8 +341,4 @@ impl Clock {
 
         vec![part[0], subparts[0], subparts[1]]
     }
-}
-
-fn sleep(ms: u64) {
-    std::thread::sleep(std::time::Duration::from_millis(ms));
 }
