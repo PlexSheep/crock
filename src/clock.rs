@@ -138,8 +138,7 @@ impl Clock {
     }
 
     // FIXME: This generally works, but we want 0% at the start and 100% at the end, which does not 
-    // fully work.
-    // We also want 50% at the half etc
+    // fully work. We also want 50% at the half etc. #10
     fn timebar_ratio(&self) -> Option<f64> {
         let len = self.timebar_len()?;
         let since = (Local::now()
