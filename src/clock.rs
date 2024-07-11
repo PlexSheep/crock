@@ -1,12 +1,12 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
 #![allow(clippy::question_mark_used)]
 
-use chrono::{DateTime, Local, SubsecRound, TimeZone, Timelike};
+use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
-use libpt::log::{debug, info, trace};
+use libpt::log::{debug, trace};
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyModifiers};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -21,6 +21,9 @@ pub enum TimeBarLength {
     Minute,
     Hour,
     Custom(i64),
+    /// implementing a bar that would grow smaller would be weird, so it's a count up instead of
+    /// a countdown
+    Countup(i64),
     Day,
 }
 
@@ -31,6 +34,7 @@ impl TimeBarLength {
             Self::Day => 24 * 60 * 60,
             Self::Hour => 60 * 60,
             Self::Custom(secs) => secs,
+            Self::Countup(secs) => secs,
         }
     }
 }
@@ -44,7 +48,7 @@ impl Default for TimeBarLength {
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone)]
 #[command(help_template = HELP_TEMPLATE, author, version)]
-#[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom"]),))]
+#[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom", "count_up"]),))]
 #[allow(clippy::struct_excessive_bools)] // the struct is for cli parsing and we already use an
                                          // ArgGroup
 pub struct Clock {
@@ -63,6 +67,8 @@ pub struct Clock {
     pub hour: bool,
     #[clap(short, long)]
     pub custom: Option<i64>,
+    #[clap(short = 'u', long)]
+    pub count_up: Option<i64>,
     #[clap(skip)]
     pub(crate) last_reset: Option<DateTime<Local>>,
 }
@@ -127,6 +133,8 @@ impl Clock {
             Some(TimeBarLength::Day)
         } else if self.hour {
             Some(TimeBarLength::Hour)
+        } else if self.count_up.is_some() {
+            self.count_up.map(TimeBarLength::Countup)
         } else {
             // this feels weird but is the same
             self.custom.map(TimeBarLength::Custom)
@@ -151,6 +159,9 @@ impl Clock {
         if let Some(len) = self.timebar_len() {
             let since_last_reset = Local::now().signed_duration_since(self.last_reset.unwrap());
             match len {
+                TimeBarLength::Countup(_) => {
+                    // the count up should not reset. If the time is over, just keep it at 100%
+                }
                 TimeBarLength::Custom(_) => {
                     if since_last_reset.num_seconds() >= 1
                         && since_last_reset.num_seconds() >= len.as_secs()
@@ -184,7 +195,7 @@ impl Clock {
         if let Some(len) = self.timebar_len() {
             trace!("Local Time: {}", Local::now());
             match len {
-                TimeBarLength::Custom(_) => {
+                TimeBarLength::Custom(_) | TimeBarLength::Countup(_) => {
                     self.last_reset = Some(Local::now());
                 }
                 TimeBarLength::Minute => {
