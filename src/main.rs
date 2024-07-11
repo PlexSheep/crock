@@ -29,6 +29,9 @@ fn main() -> anyhow::Result<()> {
     }
     debug!("set up logger");
 
+    #[cfg(debug_assertions)]
+    mock_tests();
+
     debug!("taking over terminal");
     // setup terminal
     enable_raw_mode()?;
@@ -52,4 +55,39 @@ fn main() -> anyhow::Result<()> {
 
     debug!("done");
     result
+}
+
+#[cfg(debug_assertions)]
+#[allow(clippy::cast_precision_loss)]
+fn mock_tests() {
+    use chrono::{Local, Timelike};
+    use libpt::log::info;
+
+    use self::clock::UiData;
+    info!("doing the mock tests");
+    {
+        let mut c = Clock::parse_from(["some exec", "-mvvv"]);
+        let now = Local::now();
+        c.last_reset = Some(now.with_second(0).unwrap());
+
+        assert_eq!(c.timebar_ratio(now.with_second(30).unwrap()), Some(0.5));
+        info!("30s=0.5");
+        assert_eq!(
+            c.timebar_ratio(now.with_second(59).unwrap()),
+            Some(0.9833333333333333)
+        );
+        info!("60s=1.0");
+        assert_eq!(c.timebar_ratio(now.with_second(0).unwrap()), Some(0.0));
+        info!("0s=0.0");
+    }
+    {
+        let mut data = UiData::default();
+        data.update("date".to_owned(), "time".to_owned(), Some(0.1));
+        assert_eq!(data.timebar_ratio(), Some(0.1));
+        data.update("date".to_owned(), "time".to_owned(), Some(0.2));
+        assert_eq!(data.timebar_ratio(), Some(0.2));
+        data.update("date".to_owned(), "time".to_owned(), Some(0.3));
+        assert_eq!(data.timebar_ratio(), Some(0.3));
+    }
+    info!("finished the mock tests");
 }
