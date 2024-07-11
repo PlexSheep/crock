@@ -1,12 +1,12 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
 #![allow(clippy::question_mark_used)]
 
-use chrono::{DateTime, Local, SubsecRound, TimeZone, Timelike};
+use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
-use libpt::log::{debug, info, trace};
+use libpt::log::{debug, trace};
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyModifiers};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
