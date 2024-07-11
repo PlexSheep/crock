@@ -3,7 +3,6 @@
 
 use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
-use humantime;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
@@ -14,22 +13,22 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::Terminal;
-use std::io::Stdout;
+use std::io::{Stdout, Write};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBarLength {
     Minute,
     Hour,
-    Custom(i64),
+    Custom(i128),
     /// implementing a bar that would grow smaller would be weird, so it's a count up instead of
     /// a countdown
-    Countup(i64),
+    Countup(i128),
     Day,
 }
 
 impl TimeBarLength {
-    pub(crate) const fn as_secs(self) -> i64 {
+    pub(crate) const fn as_secs(self) -> i128 {
         match self {
             Self::Minute => 60,
             Self::Day => 24 * 60 * 60,
@@ -147,13 +146,15 @@ impl Clock {
         } else if self.hour {
             Some(TimeBarLength::Hour)
         } else if self.countdown.is_some() {
-            Some(TimeBarLength::Countup(
-                self.countdown.unwrap().as_secs() as i64
-            ))
+            Some(TimeBarLength::Countup(i128::from(
+                self.countdown.unwrap().as_secs(),
+            )))
+        } else if self.custom.is_some() {
+            Some(TimeBarLength::Custom(i128::from(
+                self.countdown.unwrap().as_secs(),
+            )))
         } else {
-            Some(TimeBarLength::Custom(
-                self.countdown.unwrap().as_secs() as i64
-            ))
+            None
         }
     }
 
@@ -180,7 +181,7 @@ impl Clock {
                 }
                 TimeBarLength::Custom(_) => {
                     if since_last_reset.num_seconds() >= 1
-                        && since_last_reset.num_seconds() >= len.as_secs()
+                        && i128::from(since_last_reset.num_seconds()) >= len.as_secs()
                     {
                         self.last_reset = Some(Local::now());
                     }
@@ -246,6 +247,13 @@ impl Clock {
         Ok(())
     }
 
+    /// Run the clock TUI
+    ///
+    /// # Errors
+    ///
+    /// * The [setup](Self::setup) fails
+    /// * Drawing the [ui](Self::ui) fails
+    /// * Polling or reading an event fails
     pub(crate) fn run(
         mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
@@ -345,48 +353,11 @@ impl Clock {
                 let ratio = data.timebar_ratio().unwrap();
 
                 if !self.did_notify && (ratio - 1.0).abs() < 0.000_001 {
-                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {
-                        #[cfg(feature = "desktop")]
-                        {
-                            let mut notify = notify_rust::Notification::new();
-
-                            notify.appname(env!("CARGO_BIN_NAME"));
-
-                            // see [FreeDesktop Sound Naming Specification](http://0pointer.de/public/sound-naming-spec.html)
-                            // a sound exists for our use-case
-                            //
-                            // NOTE: sadly, notify_rust does not (yet) support KDE plasma, because
-                            // they have a weird way of making sounds and notifications in general
-                            // work. At least we get a little notification.
-                            //
-                            // TODO: add something to make a sound without the notification system,
-                            // as that is not reliable but the user might depend on it.
-                            notify.sound_name("alarm-clock-elapsed");
-
-                            // The user sets the time with the expectation to be notified, but it's
-                            // not like the moon is crashing into the earth
-                            notify.urgency(notify_rust::Urgency::Normal);
-
-                            // The user wants to be notified, otherwise he wouldn't set this
-                            // option. The notification should stay, until the user makes it go
-                            // away. This is useful when the user leaves their workstation, comes
-                            // back some time later, and the duration has been reached during the
-                            // time he was away.
-                            notify.timeout(notify_rust::Timeout::Never);
-
-                            notify.summary(&format!(
-                                "Your countdown of {} is up.",
-                                humantime::Duration::from(self.countdown.unwrap())
-                            ));
-                            // NOTE: this will only work on machines with a proper desktop, not
-                            // with things like WSL2 or a docker container. Therefore, it is behind
-                            // the desktop feature.
-                            let _ = notify.show().inspect_err(|e| {
-                                error!("could not notify of finished countup: {e}");
-                                debug!(": {e:#?}");
-                            });
-                        }
-                    }
+                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {}
+                    let _ = self.notify().inspect_err(|e| {
+                        error!("could not notify: {e}");
+                        debug!("complete error: {e:#?}");
+                    });
                     self.did_notify = true;
                 }
 
@@ -430,6 +401,55 @@ impl Clock {
             frame.render_widget(clockw, parts[0]);
         })?;
         debug!("done rendering the ui");
+        Ok(())
+    }
+    fn notify(&mut self) -> anyhow::Result<()> {
+        Self::beep()?;
+        #[cfg(feature = "desktop")]
+        {
+            let mut notify = notify_rust::Notification::new();
+
+            notify.appname(env!("CARGO_BIN_NAME"));
+
+            // see [FreeDesktop Sound Naming Specification](http://0pointer.de/public/sound-naming-spec.html)
+            // a sound exists for our use-case
+            //
+            // NOTE: sadly, notify_rust does not (yet) support KDE plasma, because
+            // they have a weird way of making sounds and notifications in general
+            // work. At least we get a little notification.
+            //
+            // TODO: add something to make a sound without the notification system,
+            // as that is not reliable but the user might depend on it.
+            notify.sound_name("alarm-clock-elapsed");
+
+            // The user sets the time with the expectation to be notified, but it's
+            // not like the moon is crashing into the earth
+            notify.urgency(notify_rust::Urgency::Normal);
+
+            // The user wants to be notified, otherwise he wouldn't set this
+            // option. The notification should stay, until the user makes it go
+            // away. This is useful when the user leaves their workstation, comes
+            // back some time later, and the duration has been reached during the
+            // time he was away.
+            notify.timeout(notify_rust::Timeout::Never);
+
+            notify.summary(&format!(
+                "Your countdown of {} is up.",
+                humantime::Duration::from(self.countdown.unwrap())
+            ));
+            // NOTE: this will only work on machines with a proper desktop, not
+            // with things like WSL2 or a docker container. Therefore, it is behind
+            // the desktop feature.
+            let _ = notify.show().inspect_err(|e| {
+                error!("could not notify of finished countup: {e}");
+                debug!(": {e:#?}");
+            });
+        }
+        Ok(())
+    }
+    fn beep() -> anyhow::Result<()> {
+        print!("\x07");
+        std::io::stdout().flush()?;
         Ok(())
     }
     fn partition(r: Rect) -> Vec<Rect> {
