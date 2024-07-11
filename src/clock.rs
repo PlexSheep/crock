@@ -6,7 +6,7 @@ use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
-use libpt::log::{debug, trace};
+use libpt::log::{debug, error, trace};
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyModifiers};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -33,8 +33,7 @@ impl TimeBarLength {
             Self::Minute => 60,
             Self::Day => 24 * 60 * 60,
             Self::Hour => 60 * 60,
-            Self::Custom(secs) => secs,
-            Self::Countup(secs) => secs,
+            Self::Custom(secs) | Self::Countup(secs) => secs,
         }
     }
 }
@@ -71,6 +70,8 @@ pub struct Clock {
     pub count_up: Option<i64>,
     #[clap(skip)]
     pub(crate) last_reset: Option<DateTime<Local>>,
+    #[clap(skip)]
+    pub(crate) did_notify: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -293,7 +294,7 @@ impl Clock {
         self.maybe_reset_since_zero();
     }
     fn ui(
-        &self,
+        &mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
         data: &UiData,
     ) -> anyhow::Result<()> {
@@ -326,8 +327,39 @@ impl Clock {
             // Will not be rendered if it is None
             let timebarw: Option<LineGauge> = if self.timebar_len().is_some() {
                 debug!("time bar ration: {:?}", data.timebar_ratio());
+                let ratio = data.timebar_ratio().unwrap();
+
+                if !self.did_notify && (ratio - 1.0).abs() < 0.000_001 {
+                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {
+                        #[cfg(feature = "desktop")]
+                        {
+                            let mut notify = notify_rust::Notification::new();
+                            notify.appname(env!("CARGO_BIN_NAME"));
+                            notify.summary(&format!(
+                                "Your countdown of {} is up.",
+                                self.count_up.unwrap()
+                            ));
+                            // FIXME: does not appear to be working on my WSL2
+                            let _ = notify.show().inspect_err(|e| {
+                                error!("could not notify of finished countup: {e}");
+                                debug!(": {e:#?}");
+                            });
+                        }
+                    }
+                    self.did_notify = true;
+                }
+
                 let tmp = LineGauge::default()
-                    .filled_style(Style::default().blue())
+                    .filled_style(if self.did_notify {
+                        Style::default()
+                            .slow_blink()
+                            .bold()
+                            .underlined()
+                            .yellow()
+                            .crossed_out()
+                    } else {
+                        Style::default().blue()
+                    })
                     .unfilled_style(Style::default())
                     .block(Block::new().padding(Padding::new(
                         parts[2].left() / 10,
@@ -335,7 +367,7 @@ impl Clock {
                         0,
                         0,
                     )))
-                    .ratio(data.timebar_ratio().unwrap());
+                    .ratio(ratio);
                 Some(tmp)
             } else {
                 None
