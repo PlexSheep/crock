@@ -3,6 +3,7 @@
 
 use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
+use humantime;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
 use libpt::cli::{args::VerbosityLevel, clap};
@@ -47,7 +48,7 @@ impl Default for TimeBarLength {
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone)]
 #[command(help_template = HELP_TEMPLATE, author, version)]
-#[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom", "count_up"]),))]
+#[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom", "countdown"]),))]
 #[allow(clippy::struct_excessive_bools)] // the struct is for cli parsing and we already use an
                                          // ArgGroup
 pub struct Clock {
@@ -58,16 +59,23 @@ pub struct Clock {
     pub timer: bool,
 
     // timebar options
+    /// show a time bar that tracks progress of the minute
     #[clap(short, long)]
     pub minute: bool,
+    /// show a time bar that tracks progress of the day
     #[clap(short, long)]
     pub day: bool,
+    /// show a time bar that tracks progress of the hour
     #[clap(short = 'o', long)]
     pub hour: bool,
-    #[clap(short, long)]
-    pub custom: Option<i64>,
-    #[clap(short = 'u', long)]
-    pub count_up: Option<i64>,
+    /// show a time bar that tracks progress of a custom duration
+    #[clap(short, long, value_parser = humantime::parse_duration)]
+    pub custom: Option<std::time::Duration>,
+    /// show a time bar that tracks progress of a custom duration without resetting
+    #[clap(short = 'u', long, value_parser = humantime::parse_duration)]
+    pub countdown: Option<std::time::Duration>,
+
+    // internal variables
     #[clap(skip)]
     pub(crate) last_reset: Option<DateTime<Local>>,
     #[clap(skip)]
@@ -134,11 +142,14 @@ impl Clock {
             Some(TimeBarLength::Day)
         } else if self.hour {
             Some(TimeBarLength::Hour)
-        } else if self.count_up.is_some() {
-            self.count_up.map(TimeBarLength::Countup)
+        } else if self.countdown.is_some() {
+            Some(TimeBarLength::Countup(
+                self.countdown.unwrap().as_secs() as i64
+            ))
         } else {
-            // this feels weird but is the same
-            self.custom.map(TimeBarLength::Custom)
+            Some(TimeBarLength::Custom(
+                self.countdown.unwrap().as_secs() as i64
+            ))
         }
     }
 
@@ -334,12 +345,38 @@ impl Clock {
                         #[cfg(feature = "desktop")]
                         {
                             let mut notify = notify_rust::Notification::new();
+
                             notify.appname(env!("CARGO_BIN_NAME"));
+
+                            // see [FreeDesktop Sound Naming Specification](http://0pointer.de/public/sound-naming-spec.html)
+                            // a sound exists for our use-case
+                            //
+                            // NOTE: sadly, notify_rust does not (yet) support KDE plasma, because
+                            // they have a weird way of making sounds and notifications in general
+                            // work. At least we get a little notification.
+                            //
+                            // TODO: add something to make a sound without the notification system,
+                            // as that is not reliable but the user might depend on it.
+                            notify.sound_name("alarm-clock-elapsed");
+
+                            // The user sets the time with the expectation to be notified, but it's
+                            // not like the moon is crashing into the earth
+                            notify.urgency(notify_rust::Urgency::Normal);
+
+                            // The user wants to be notified, otherwise he wouldn't set this
+                            // option. The notification should stay, until the user makes it go
+                            // away. This is useful when the user leaves their workstation, comes
+                            // back some time later, and the duration has been reached during the
+                            // time he was away.
+                            notify.timeout(notify_rust::Timeout::Never);
+
                             notify.summary(&format!(
                                 "Your countdown of {} is up.",
-                                self.count_up.unwrap()
+                                humantime::Duration::from(self.countdown.unwrap())
                             ));
-                            // FIXME: does not appear to be working on my WSL2
+                            // NOTE: this will only work on machines with a proper desktop, not
+                            // with things like WSL2 or a docker container. Therefore, it is behind
+                            // the desktop feature.
                             let _ = notify.show().inspect_err(|e| {
                                 error!("could not notify of finished countup: {e}");
                                 debug!(": {e:#?}");
