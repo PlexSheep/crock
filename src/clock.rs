@@ -69,9 +69,13 @@ pub struct Clock {
     #[clap(short = 'o', long)]
     pub hour: bool,
     /// show a time bar that tracks progress of a custom duration
+    ///
+    /// Precision: only to seconds
     #[clap(short, long, value_parser = humantime::parse_duration)]
     pub custom: Option<std::time::Duration>,
     /// show a time bar that tracks progress of a custom duration without resetting
+    ///
+    /// Precision: only to seconds
     #[clap(short = 'u', long, value_parser = humantime::parse_duration)]
     pub countdown: Option<std::time::Duration>,
 
