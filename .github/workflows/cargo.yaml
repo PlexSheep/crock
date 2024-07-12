@@ -22,6 +22,10 @@ jobs:
         run: |
           rustup component add rustfmt
           rustup component add clippy
+      - name: install additional system dependencies
+        run: |
+          apt update
+          apt install libdbus-1-dev libasound2-dev -y
       - name: config custom registry
         run: |
           mkdir -p ~/.cargo/
@@ -33,13 +37,3 @@ jobs:
           cat ~/.cargo/config.toml
       - name: cargo clippy check
         run: cargo clippy --all-features --all-targets --workspace
-      - name: cargo clippy fix
-        run: cargo clippy --fix --all-features --all-targets --workspace
-      - name: cargo fmt
-        run: cargo fmt --all
-      - name: commit back to repository
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          # Optional. Commit message for the created commit.
-          # Defaults to "Apply automatic changes"
-          commit_message: automatic cargo CI changes
