@@ -78,6 +78,7 @@ pub struct Clock {
     #[clap(short = 'u', long, value_parser = humantime::parse_duration)]
     pub countdown: Option<std::time::Duration>,
     /// Play a notification sound when the countdown is up
+    #[cfg(feature = "sound")]
     #[clap(short, long, default_value_t = true)]
     pub sound: bool,
 
