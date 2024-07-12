@@ -325,7 +325,7 @@ impl Clock {
         data: &UiData,
     ) -> anyhow::Result<()> {
         let clockw = tui_big_text::BigText::builder()
-            .style(Style::new().red().on_light_blue())
+            .style(Style::new().red())
             .lines(vec![data.ftime().into()])
             .alignment(Alignment::Center)
             .build()
@@ -335,10 +335,10 @@ impl Clock {
             let root = frame.size();
             let space = Block::bordered()
                 .padding(Padding::new(
-                    root.width / 8,
-                    root.width / 8,
-                    root.height / 8,
-                    root.height / 8,
+                    root.width / 16,
+                    root.width / 16,
+                    root.height / 16,
+                    root.height / 16,
                 ))
                 .title(env!("CARGO_PKG_NAME"))
                 .title_bottom(env!("CARGO_PKG_VERSION"))
@@ -365,7 +365,7 @@ impl Clock {
                     }
                 }
 
-                let tmp = LineGauge::default()
+                let timebarw = LineGauge::default()
                     .filled_style(if self.did_notify {
                         Style::default()
                             .slow_blink()
@@ -376,16 +376,14 @@ impl Clock {
                     } else {
                         Style::default().blue()
                     })
-                    .on_cyan()
                     .unfilled_style(Style::default())
-                    .block(Block::new().padding(Padding::new(
-                        parts[2].left() / 10,
-                        parts[2].right() / 6,
-                        0,
-                        0,
-                    )))
+                    .block(Block::default().padding(Padding::right(if root.width > 80 {
+                        (f32::from(parts[2].width) * 0.43) as u16
+                    } else {
+                        2
+                    })))
                     .ratio(ratio);
-                Some(tmp)
+                Some(timebarw)
             } else {
                 None
             };
@@ -393,14 +391,8 @@ impl Clock {
             // render the small date
             let datew = Paragraph::new(data.fdate())
                 .blue()
-                .alignment(Alignment::Left)
-                .on_gray()
-                .block(Block::new().padding(Padding::new(
-                    parts[1].left(),
-                    parts[1].right() / 3,
-                    0,
-                    0,
-                )));
+                .block(Block::default().padding(Padding::right(2)))
+                .alignment(Alignment::Right);
             frame.render_widget(&timebarw, parts[2]);
             frame.render_widget(datew, parts[1]);
             // render the clock
@@ -484,11 +476,15 @@ impl Clock {
     fn partition(r: Rect) -> Vec<Rect> {
         let part = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(8), Constraint::Min(0)])
+            .constraints([Constraint::Length(8), Constraint::Length(3)])
             .split(r);
+        let hlen_date: u16 = (f32::from(part[1].width) * 0.35) as u16;
         let subparts = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Min(10), Constraint::Ratio(1, 2)])
+            .constraints([
+                Constraint::Length(hlen_date),
+                Constraint::Length(part[1].width - hlen_date),
+            ])
             .split(part[1]);
 
         vec![part[0], subparts[0], subparts[1]]
