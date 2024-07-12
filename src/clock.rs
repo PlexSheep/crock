@@ -13,7 +13,7 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::Terminal;
-use std::io::{Stdout, Write};
+use std::io::{Cursor, Stdout, Write};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -405,6 +405,21 @@ impl Clock {
     }
     fn notify(&mut self) -> anyhow::Result<()> {
         Self::beep()?;
+        #[cfg(feature = "sound")]
+        {
+            trace!("playing bundled sound");
+            use rodio::{source::Source, Decoder, OutputStream};
+
+            // only 30 KiB, so let's just include it in the binary and not worry about reading it
+            // from the fs and somehow making the file be there
+            let sound: Cursor<_> = std::io::Cursor::new(include_bytes!("../data/media/alarm.mp3"));
+
+            // Get an output stream handle to the default physical sound device
+            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+            let source = Decoder::new(sound).expect("could not load the included sound");
+            stream_handle.play_raw(source.convert_samples())?; // the sound plays in another thread
+            debug!("played bundled sound");
+        }
         #[cfg(feature = "desktop")]
         {
             let mut notify = notify_rust::Notification::new();
@@ -420,6 +435,10 @@ impl Clock {
             //
             // TODO: add something to make a sound without the notification system,
             // as that is not reliable but the user might depend on it.
+
+            // only play this when we don't use built in sound, this
+            // isn't as consistent
+            #[cfg(not(feature = "sound"))]
             notify.sound_name("alarm-clock-elapsed");
 
             // The user sets the time with the expectation to be notified, but it's
