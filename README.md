@@ -13,3 +13,21 @@ A little clock for your terminal, written in rust.
 * [Original Repository](https://git.cscherr.de/PlexSheep/crock)
 * [GitHub Mirror](https://github.com/PlexSheep/crock)
 * [crates.io](https://crates.io/crates/crock)
+
+## Compilation
+
+The `desktop` and `sound` features require additional system dependencies:
+
+| Feature   | Dependency | PKG Name on Debian based Distributions |
+|-----------|------------|----------------------------------------|
+| `desktop` | dbus       | `libdbus-1-dev`                        |
+| `sound`   | alsa       | `libasound2-dev`                       |
+
+If you want to compile without these features, you will not have notifications 
+and sound alerts for countdown mode. (Use `cargo build -r --no-default-features`)
+
+## Acknoledgements
+
+The included alarm sound is from pixabay, royalty free:
+
+-> ["Alarm Clock 1"](https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=105903)
