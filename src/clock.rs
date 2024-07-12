@@ -455,12 +455,9 @@ impl Clock {
             // not like the moon is crashing into the earth
             notify.urgency(notify_rust::Urgency::Normal);
 
-            // The user wants to be notified, otherwise he wouldn't set this
-            // option. The notification should stay, until the user makes it go
-            // away. This is useful when the user leaves their workstation, comes
-            // back some time later, and the duration has been reached during the
-            // time he was away.
-            notify.timeout(notify_rust::Timeout::Never);
+            // We don't need to have it be displayed for ever, the TUI shows that the time is up
+            // (100%) already.
+            notify.timeout(notify_rust::Timeout::Default);
 
             notify.summary(&format!(
                 "Your countdown of {} is up.",
