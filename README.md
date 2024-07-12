@@ -28,6 +28,6 @@ and sound alerts for countdown mode. (Use `cargo build -r --no-default-features`
 
 ## Acknoledgements
 
-The included alarm sound is from pixabay, royalty free:
+The included alarm sound is from [freesound.org](https://freesound.org):
 
--> ["Alarm Clock 1"](https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=105903)
+-> ["effect_notify.wav" by ricemaster (CC-0)](https://freesound.org/people/ricemaster/sounds/278142/)

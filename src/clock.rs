@@ -77,6 +77,9 @@ pub struct Clock {
     /// Precision: only to seconds
     #[clap(short = 'u', long, value_parser = humantime::parse_duration)]
     pub countdown: Option<std::time::Duration>,
+    /// Play a notification sound when the countdown is up
+    #[clap(short, long)]
+    pub sound: bool,
 
     // internal variables
     #[clap(skip)]
@@ -406,19 +409,26 @@ impl Clock {
     fn notify(&mut self) -> anyhow::Result<()> {
         Self::beep()?;
         #[cfg(feature = "sound")]
-        {
-            trace!("playing bundled sound");
-            use rodio::{source::Source, Decoder, OutputStream};
+        if self.sound {
+            std::thread::spawn(|| {
+                use rodio::{Decoder, OutputStream, Sink};
+                // only 30 KiB, so let's just include it in the binary and not worry about reading it
+                // from the fs and somehow making the file be there
+                const SOUND_RAW: &[u8] = include_bytes!("../data/media/alarm.mp3");
 
-            // only 30 KiB, so let's just include it in the binary and not worry about reading it
-            // from the fs and somehow making the file be there
-            let sound: Cursor<_> = std::io::Cursor::new(include_bytes!("../data/media/alarm.mp3"));
+                trace!("playing bundled sound");
 
-            // Get an output stream handle to the default physical sound device
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let source = Decoder::new(sound).expect("could not load the included sound");
-            stream_handle.play_raw(source.convert_samples())?; // the sound plays in another thread
-            debug!("played bundled sound");
+                let sound_data: Cursor<_> = std::io::Cursor::new(SOUND_RAW);
+
+                let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+                let sink = Sink::try_new(&stream_handle).unwrap();
+                sink.append(
+                    Decoder::new(sound_data).expect("could not decode the bundled alarm sound"),
+                );
+                sink.sleep_until_end();
+
+                debug!("played bundled sound");
+            });
         }
         #[cfg(feature = "desktop")]
         {
