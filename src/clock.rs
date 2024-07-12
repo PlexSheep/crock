@@ -452,9 +452,6 @@ impl Clock {
             // NOTE: sadly, notify_rust does not (yet) support KDE plasma, because
             // they have a weird way of making sounds and notifications in general
             // work. At least we get a little notification.
-            //
-            // TODO: add something to make a sound without the notification system,
-            // as that is not reliable but the user might depend on it.
 
             // only play this when we don't use built in sound, this
             // isn't as consistent
