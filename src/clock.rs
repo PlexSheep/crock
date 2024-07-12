@@ -362,6 +362,13 @@ impl Clock {
                         debug!("complete error: {e:#?}");
                     });
                     self.did_notify = true;
+                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {
+                        let _ = self.notify().inspect_err(|e| {
+                            error!("could not notify: {e}");
+                            debug!("complete error: {e:#?}");
+                        });
+                        self.did_notify = true;
+                    }
                 }
 
                 let tmp = LineGauge::default()
