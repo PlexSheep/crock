@@ -154,7 +154,7 @@ impl Clock {
             )))
         } else if self.custom.is_some() {
             Some(TimeBarLength::Custom(i128::from(
-                self.countdown.unwrap().as_secs(),
+                self.custom.unwrap().as_secs(),
             )))
         } else {
             None
@@ -325,7 +325,7 @@ impl Clock {
         data: &UiData,
     ) -> anyhow::Result<()> {
         let clockw = tui_big_text::BigText::builder()
-            .style(Style::new().red())
+            .style(Style::new().red().on_light_blue())
             .lines(vec![data.ftime().into()])
             .alignment(Alignment::Center)
             .build()
@@ -356,12 +356,6 @@ impl Clock {
                 let ratio = data.timebar_ratio().unwrap();
 
                 if !self.did_notify && (ratio - 1.0).abs() < 0.000_001 {
-                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {}
-                    let _ = self.notify().inspect_err(|e| {
-                        error!("could not notify: {e}");
-                        debug!("complete error: {e:#?}");
-                    });
-                    self.did_notify = true;
                     if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {
                         let _ = self.notify().inspect_err(|e| {
                             error!("could not notify: {e}");
@@ -382,6 +376,7 @@ impl Clock {
                     } else {
                         Style::default().blue()
                     })
+                    .on_cyan()
                     .unfilled_style(Style::default())
                     .block(Block::new().padding(Padding::new(
                         parts[2].left() / 10,
@@ -399,6 +394,7 @@ impl Clock {
             let datew = Paragraph::new(data.fdate())
                 .blue()
                 .alignment(Alignment::Left)
+                .on_gray()
                 .block(Block::new().padding(Padding::new(
                     parts[1].left(),
                     parts[1].right() / 3,
