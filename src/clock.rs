@@ -485,8 +485,8 @@ impl Clock {
         let part = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(if r.width > 80 { 8 } else { 5 }),
                 Constraint::Length(3),
+                Constraint::Length(if r.width > 80 { 8 } else { 5 }),
             ])
             .split(r);
         let hlen_date: u16 = (f32::from(part[1].width) * 0.35) as u16;
@@ -494,10 +494,10 @@ impl Clock {
             .direction(Direction::Horizontal)
             .constraints([
                 Constraint::Length(hlen_date),
-                Constraint::Length(part[1].width - hlen_date),
+                Constraint::Length(part[0].width - hlen_date),
             ])
-            .split(part[1]);
+            .split(part[0]);
 
-        vec![part[0], subparts[0], subparts[1]]
+        vec![part[1], subparts[0], subparts[1]]
     }
 }
