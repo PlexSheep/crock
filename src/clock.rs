@@ -324,12 +324,6 @@ impl Clock {
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
         data: &UiData,
     ) -> anyhow::Result<()> {
-        let clockw = tui_big_text::BigText::builder()
-            .style(Style::new().red())
-            .lines(vec![data.ftime().into()])
-            .alignment(Alignment::Center)
-            .build()
-            .expect("could not render time widget");
         terminal.draw(|frame| {
             debug!("rendering the ui");
             let root = frame.size();
@@ -347,6 +341,20 @@ impl Clock {
             let a = space.inner(root);
             frame.render_widget(space, root);
             let parts = Self::partition(a);
+
+            let mut clockw = tui_big_text::BigText::builder();
+            if a.width > 80 {
+                clockw.pixel_size(tui_big_text::PixelSize::Full);
+            } else {
+                clockw.pixel_size(tui_big_text::PixelSize::Quadrant);
+            }
+
+            let clockw = clockw
+                .style(Style::new().red())
+                .lines(vec![data.ftime().into()])
+                .alignment(Alignment::Center)
+                .build()
+                .expect("could not render time widget");
 
             // render the timebar which counts up to the full minute and so on
             //
@@ -377,10 +385,10 @@ impl Clock {
                         Style::default().blue()
                     })
                     .unfilled_style(Style::default())
-                    .block(Block::default().padding(Padding::right(if root.width > 80 {
+                    .block(Block::default().padding(Padding::right(if a.width > 80 {
                         (f32::from(parts[2].width) * 0.43) as u16
                     } else {
-                        2
+                        (f32::from(parts[2].width) * 0.25) as u16
                     })))
                     .ratio(ratio);
                 Some(timebarw)
@@ -476,7 +484,10 @@ impl Clock {
     fn partition(r: Rect) -> Vec<Rect> {
         let part = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(8), Constraint::Length(3)])
+            .constraints([
+                Constraint::Length(if r.width > 80 { 8 } else { 5 }),
+                Constraint::Length(3),
+            ])
             .split(r);
         let hlen_date: u16 = (f32::from(part[1].width) * 0.35) as u16;
         let subparts = Layout::default()
