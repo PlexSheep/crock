@@ -374,6 +374,12 @@ impl Clock {
                     }
                 }
 
+                #[allow(clippy::cast_sign_loss)]
+                #[allow(clippy::cast_possible_truncation)]
+                let padding = [
+                    (f32::from(parts[2].width) * 0.43) as u16,
+                    (f32::from(parts[2].width) * 0.25) as u16,
+                ];
                 let timebarw = LineGauge::default()
                     .filled_style(if self.did_notify {
                         Style::default()
@@ -387,9 +393,9 @@ impl Clock {
                     })
                     .unfilled_style(Style::default())
                     .block(Block::default().padding(Padding::right(if a.width > 80 {
-                        (f32::from(parts[2].width) * 0.43) as u16
+                        padding[0]
                     } else {
-                        (f32::from(parts[2].width) * 0.25) as u16
+                        padding[1]
                     })))
                     .ratio(ratio);
                 Some(timebarw)
@@ -490,6 +496,8 @@ impl Clock {
                 Constraint::Length(if r.width > 80 { 8 } else { 5 }),
             ])
             .split(r);
+        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_possible_truncation)]
         let hlen_date: u16 = (f32::from(part[1].width) * 0.35) as u16;
         let subparts = Layout::default()
             .direction(Direction::Horizontal)
