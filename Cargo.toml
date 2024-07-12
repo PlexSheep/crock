@@ -1,6 +1,6 @@
 [package]
 name = "crock"
-version = "0.2.0-alpha.2"
+version = "0.2.0"
 edition = "2021"
 publish = true
 authors = ["Christoph J. Scherr <software@cscherr.de>"]
