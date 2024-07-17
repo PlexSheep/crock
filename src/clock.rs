@@ -11,7 +11,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyModifiers};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Style, Stylize};
-use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
+use ratatui::widgets::{Block, Padding, Paragraph};
 use ratatui::Terminal;
 use std::collections::HashMap;
 use std::io::{Cursor, Stdout, Write};
@@ -111,7 +111,7 @@ impl Clock {
                 }
                 TimeBarLength::Custom(_) => {
                     if since_last_reset.num_seconds() >= 1
-                        && i64::from(since_last_reset.num_seconds()) >= len.as_secs()
+                        && since_last_reset.num_seconds() >= len.as_secs()
                     {
                         self.last_reset = Some(Local::now());
                     }

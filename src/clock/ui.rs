@@ -150,7 +150,7 @@ pub fn timebarw_label<'a>(
                     .unwrap(),
             ),
         };
-        Paragraph::new(format!("{} / {}", time_now, len))
+        Paragraph::new(format!("{time_now} / {len}"))
             .alignment(Alignment::Center)
             .block(
                 Block::default().padding(Padding::right(if inner_rect.width > 80 {

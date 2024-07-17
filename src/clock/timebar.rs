@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use chrono::{Duration, TimeDelta};
+use chrono::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBarLength {
