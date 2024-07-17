@@ -63,7 +63,7 @@ fn mock_tests() {
     use chrono::{Local, Timelike};
     use libpt::log::info;
 
-    use self::clock::UiData;
+    use crate::clock::uidata::UiData;
     info!("doing the mock tests");
     {
         let mut c = Clock::parse_from(["some exec", "-mvvv"]);
