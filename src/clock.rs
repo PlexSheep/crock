@@ -13,6 +13,7 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::Terminal;
+use std::collections::HashMap;
 use std::io::{Cursor, Stdout, Write};
 use std::time::{Duration, Instant};
 
@@ -304,8 +305,8 @@ impl Clock {
                 #[allow(clippy::cast_sign_loss)]
                 #[allow(clippy::cast_possible_truncation)]
                 let padding = [
-                    (f32::from(parts[2].width) * 0.43) as u16,
-                    (f32::from(parts[2].width) * 0.25) as u16,
+                    (f32::from(parts["timebarw"].width) * 0.43) as u16,
+                    (f32::from(parts["timebarw"].width) * 0.25) as u16,
                 ];
                 let timebarw = LineGauge::default()
                     .filled_style(if self.did_notify {
@@ -335,10 +336,10 @@ impl Clock {
                 .blue()
                 .block(Block::default().padding(Padding::right(2)))
                 .alignment(Alignment::Right);
-            frame.render_widget(&timebarw, parts[2]);
-            frame.render_widget(datew, parts[1]);
+            frame.render_widget(&timebarw, parts["timebarw"]);
+            frame.render_widget(datew, parts["datew"]);
             // render the clock
-            frame.render_widget(clockw, parts[0]);
+            frame.render_widget(clockw, parts["clockw"]);
         })?;
         debug!("done rendering the ui");
         Ok(())
@@ -412,7 +413,7 @@ impl Clock {
         std::io::stdout().flush()?;
         Ok(())
     }
-    fn partition(r: Rect) -> Vec<Rect> {
+    fn partition(r: Rect) -> HashMap<&'static str, Rect> {
         let part = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -431,6 +432,10 @@ impl Clock {
             ])
             .split(part[0]);
 
-        vec![part[1], subparts[0], subparts[1]]
+        HashMap::from([
+            ("clockw", part[1]),
+            ("timebarw", subparts[1]),
+            ("datew", subparts[0]),
+        ])
     }
 }
