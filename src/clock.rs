@@ -15,12 +15,12 @@ use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
 use ratatui::Terminal;
 use std::collections::HashMap;
 use std::io::{Cursor, Stdout, Write};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 pub mod timebar;
-pub mod uidata;
+pub mod ui;
 use timebar::TimeBarLength;
-use uidata::UiData;
+use ui::UiData;
 
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone)]
@@ -78,13 +78,11 @@ impl Clock {
         } else if self.hour {
             Some(TimeBarLength::Hour)
         } else if self.countdown.is_some() {
-            Some(TimeBarLength::Countup(i128::from(
-                self.countdown.unwrap().as_secs(),
-            )))
+            Some(TimeBarLength::Countup(
+                self.countdown.unwrap().as_secs() as i64
+            ))
         } else if self.custom.is_some() {
-            Some(TimeBarLength::Custom(i128::from(
-                self.custom.unwrap().as_secs(),
-            )))
+            Some(TimeBarLength::Custom(self.custom.unwrap().as_secs() as i64))
         } else {
             None
         }
@@ -113,7 +111,7 @@ impl Clock {
                 }
                 TimeBarLength::Custom(_) => {
                     if since_last_reset.num_seconds() >= 1
-                        && i128::from(since_last_reset.num_seconds()) >= len.as_secs()
+                        && i64::from(since_last_reset.num_seconds()) >= len.as_secs()
                     {
                         self.last_reset = Some(Local::now());
                     }
@@ -190,7 +188,7 @@ impl Clock {
         mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     ) -> anyhow::Result<()> {
-        let tick_rate = Duration::from_millis(100);
+        let tick_rate = std::time::Duration::from_millis(100);
         let mut last_tick = Instant::now();
         let mut uidata: UiData = UiData::default();
         self.setup()?;
@@ -219,10 +217,12 @@ impl Clock {
             // 01:30 is 50%, 01:59 is 98%, 01:60 does not exist because that's how counting from
             // 0 works.
 
+            let now = raw_time + chrono::Duration::seconds(1);
             uidata.update(
+                now,
                 splits[0].clone(),
                 splits[1].clone(),
-                self.timebar_ratio(raw_time + chrono::Duration::seconds(1)),
+                self.timebar_ratio(now),
             );
             if uidata.changed() {
                 self.ui(terminal, &uidata)?;
@@ -267,12 +267,12 @@ impl Clock {
                 .title_bottom(env!("CARGO_PKG_VERSION"))
                 .title_alignment(Alignment::Center)
                 .title_style(Style::new().bold());
-            let a = space.inner(root);
+            let inner_rect = space.inner(root);
             frame.render_widget(space, root);
-            let parts = Self::partition(a);
+            let parts = Self::partition(inner_rect);
 
             let mut clockw = tui_big_text::BigText::builder();
-            if a.width > 80 {
+            if inner_rect.width > 80 {
                 clockw.pixel_size(tui_big_text::PixelSize::Full);
             } else {
                 clockw.pixel_size(tui_big_text::PixelSize::Quadrant);
@@ -288,48 +288,13 @@ impl Clock {
             // render the timebar which counts up to the full minute and so on
             //
             // Will not be rendered if it is None
-            let timebarw: Option<LineGauge> = if self.timebar_len().is_some() {
-                debug!("time bar ration: {:?}", data.timebar_ratio());
-                let ratio = data.timebar_ratio().unwrap();
-
-                if !self.did_notify && (ratio - 1.0).abs() < 0.000_001 {
-                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {
-                        let _ = self.notify().inspect_err(|e| {
-                            error!("could not notify: {e}");
-                            debug!("complete error: {e:#?}");
-                        });
-                        self.did_notify = true;
-                    }
-                }
-
-                #[allow(clippy::cast_sign_loss)]
-                #[allow(clippy::cast_possible_truncation)]
-                let padding = [
-                    (f32::from(parts["timebarw"].width) * 0.43) as u16,
-                    (f32::from(parts["timebarw"].width) * 0.25) as u16,
-                ];
-                let timebarw = LineGauge::default()
-                    .filled_style(if self.did_notify {
-                        Style::default()
-                            .slow_blink()
-                            .bold()
-                            .underlined()
-                            .yellow()
-                            .crossed_out()
-                    } else {
-                        Style::default().blue()
-                    })
-                    .unfilled_style(Style::default())
-                    .block(Block::default().padding(Padding::right(if a.width > 80 {
-                        padding[0]
-                    } else {
-                        padding[1]
-                    })))
-                    .ratio(ratio);
-                Some(timebarw)
-            } else {
-                None
-            };
+            let timebarw_padding = [
+                (f32::from(parts["timebarw"].width) * 0.43) as u16,
+                (f32::from(parts["timebarw"].width) * 0.25) as u16,
+            ];
+            let timebarw = ui::timebarw(self, data, &timebarw_padding, inner_rect);
+            let timebarw_label: Option<Paragraph> =
+                ui::timebarw_label(self, data, &timebarw_padding, inner_rect);
 
             // render the small date
             let datew = Paragraph::new(data.fdate())
@@ -337,6 +302,7 @@ impl Clock {
                 .block(Block::default().padding(Padding::right(2)))
                 .alignment(Alignment::Right);
             frame.render_widget(&timebarw, parts["timebarw"]);
+            frame.render_widget(&timebarw_label, parts["timebarw_label"]);
             frame.render_widget(datew, parts["datew"]);
             // render the clock
             frame.render_widget(clockw, parts["clockw"]);
@@ -432,9 +398,15 @@ impl Clock {
             ])
             .split(part[0]);
 
+        let timebarw_spaces = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(1), Constraint::Length(1)])
+            .split(subparts[1]);
+
         HashMap::from([
             ("clockw", part[1]),
-            ("timebarw", subparts[1]),
+            ("timebarw", timebarw_spaces[0]),
+            ("timebarw_label", timebarw_spaces[1]),
             ("datew", subparts[0]),
         ])
     }
