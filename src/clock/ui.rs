@@ -155,8 +155,12 @@ pub fn timebarw_label<'a>(
             // example with `-o` #17
             .checked_add_signed(len.into())
             .expect("could not calculate when the countdown finishes");
-        let timestamp_until: String =
-            format!("{}:{}:{}", until.hour(), until.minute(), until.second());
+        let timestamp_until: String = format!(
+            "{:02}:{:02}:{:02}",
+            until.hour(),
+            until.minute(),
+            until.second()
+        );
         Paragraph::new(format!("{time_now} / {len} ({timestamp_until})"))
             .alignment(Alignment::Center)
             .block(
