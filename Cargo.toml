@@ -21,6 +21,7 @@ sound = ["dep:rodio"]
 [dependencies]
 anyhow = "1.0.86"
 chrono = "0.4.38"
+human-panic = "2.0.0"
 humantime = "2.1.0"
 libpt = { version = "0.6.0", features = ["cli"] }
 notify-rust = { version = "4.11.0", default-features = false, features = [

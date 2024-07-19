@@ -15,6 +15,13 @@ use self::clock::Clock;
 mod clock;
 
 fn main() -> anyhow::Result<()> {
+    human_panic::setup_panic!(human_panic::Metadata::new(
+        env!("CARGO_BIN_NAME"),
+        env!("CARGO_PKG_VERSION")
+    )
+    .authors(env!("CARGO_PKG_AUTHORS"))
+    .homepage(env!("CARGO_PKG_HOMEPAGE")));
+
     // setup the cli
     let clock = Clock::parse();
     if clock.verbose.level() >= Level::DEBUG {
