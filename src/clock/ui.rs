@@ -151,6 +151,8 @@ pub fn timebarw_label<'a>(
             ),
         };
         let until = last_reset
+            // BUG: seconds are sometimes a little too much, for
+            // example with `-o` #17
             .checked_add_signed(len.into())
             .expect("could not calculate when the countdown finishes");
         let timestamp_until: String =
