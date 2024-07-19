@@ -150,18 +150,20 @@ pub fn timebarw_label<'a>(
                     .unwrap(),
             ),
         };
-        let until = last_reset
-            // BUG: seconds are sometimes a little too much, for
-            // example with `-o` #17
-            .checked_add_signed(len.into())
-            .expect("could not calculate when the countdown finishes");
-        let timestamp_until: String = format!(
-            "{:02}:{:02}:{:02}",
-            until.hour(),
-            until.minute(),
-            until.second()
-        );
-        Paragraph::new(format!("{time_now} / {len} ({timestamp_until})"))
+        let until = {
+            // we need to cut off the seconds if we're not in custom and countup mode, otherwise,
+            // the timestamp will not be correct. This fixes #17
+            match len {
+                TimeBarLength::Custom(_) | TimeBarLength::Countup(_) => last_reset,
+                _ => last_reset.with_second(0).unwrap(),
+            }
+        }
+        // BUG: seconds are sometimes a little too much, for
+        // example with `-o` #17
+        .checked_add_signed(len.into())
+        .expect("could not calculate when the countdown finishes")
+        .format("%H:%M:%S");
+        Paragraph::new(format!("{time_now} / {len} ({until})"))
             .alignment(Alignment::Center)
             .block(
                 Block::default().padding(Padding::right(if inner_rect.width > 80 {
