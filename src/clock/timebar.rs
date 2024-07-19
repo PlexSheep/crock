@@ -24,6 +24,12 @@ impl TimeBarLength {
     }
 }
 
+impl From<TimeBarLength> for chrono::Duration {
+    fn from(value: TimeBarLength) -> Self {
+        Self::new(value.as_secs(), 0).expect("seconds out of bounds, cannot create duration")
+    }
+}
+
 impl Default for TimeBarLength {
     fn default() -> Self {
         Self::Minute

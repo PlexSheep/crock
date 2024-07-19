@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, SubsecRound};
+use chrono::{DateTime, Local, SubsecRound, Timelike};
 use libpt::log::{debug, error, trace};
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Style, Stylize};
@@ -150,7 +150,12 @@ pub fn timebarw_label<'a>(
                     .unwrap(),
             ),
         };
-        Paragraph::new(format!("{time_now} / {len}"))
+        let until = last_reset
+            .checked_add_signed(len.into())
+            .expect("could not calculate when the countdown finishes");
+        let timestamp_until: String =
+            format!("{}:{}:{}", until.hour(), until.minute(), until.second());
+        Paragraph::new(format!("{time_now} / {len} ({timestamp_until})"))
             .alignment(Alignment::Center)
             .block(
                 Block::default().padding(Padding::right(if inner_rect.width > 80 {
