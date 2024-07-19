@@ -63,7 +63,7 @@ fn mock_tests() {
     use chrono::{Local, Timelike};
     use libpt::log::info;
 
-    use crate::clock::ui::UiData;
+    use crate::clock::ui::Data;
     info!("doing the mock tests");
     {
         let mut c = Clock::parse_from(["some exec", "-mvvv"]);
@@ -81,7 +81,7 @@ fn mock_tests() {
         info!("0s=0.0");
     }
     {
-        let mut data = UiData::default();
+        let mut data = Data::default();
         let now = Local::now();
         data.update(now, "date".to_owned(), "time".to_owned(), Some(0.1));
         assert_eq!(data.timebar_ratio(), Some(0.1));

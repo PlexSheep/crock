@@ -9,16 +9,16 @@ use crate::clock::timebar::TimeBarLength;
 use super::Clock;
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct UiData {
+pub struct Data {
     now: [DateTime<Local>; 2],
     fdate: [String; 2],
     ftime: [String; 2],
     timebar_ratio: [Option<f64>; 2],
 
-    data_idx: usize,
+    idx: usize,
 }
 
-impl UiData {
+impl Data {
     pub fn update(
         &mut self,
         now: DateTime<Local>,
@@ -26,11 +26,11 @@ impl UiData {
         ftime: String,
         timebar_ratio: Option<f64>,
     ) {
-        self.data_idx ^= 1;
-        self.now[self.data_idx] = now;
-        self.fdate[self.data_idx] = fdate;
-        self.ftime[self.data_idx] = ftime;
-        self.timebar_ratio[self.data_idx] = timebar_ratio;
+        self.idx ^= 1;
+        self.now[self.idx] = now;
+        self.fdate[self.idx] = fdate;
+        self.ftime[self.idx] = ftime;
+        self.timebar_ratio[self.idx] = timebar_ratio;
         #[cfg(debug_assertions)]
         if self.changed() {
             trace!("update with change: {:#?}", self);
@@ -49,32 +49,32 @@ impl UiData {
     #[must_use]
     #[inline]
     pub fn fdate(&self) -> &str {
-        &self.fdate[self.data_idx]
+        &self.fdate[self.idx]
     }
 
     #[must_use]
     #[inline]
     pub fn ftime(&self) -> &str {
-        &self.ftime[self.data_idx]
+        &self.ftime[self.idx]
     }
 
     #[must_use]
     #[inline]
     pub fn now(&self) -> &DateTime<Local> {
-        &self.now[self.data_idx]
+        &self.now[self.idx]
     }
 
     #[must_use]
     #[inline]
     #[allow(clippy::missing_const_for_fn)] // no it's not const
     pub fn timebar_ratio(&self) -> Option<f64> {
-        self.timebar_ratio[self.data_idx]
+        self.timebar_ratio[self.idx]
     }
 }
 
 pub fn timebarw<'a>(
     clock: &mut Clock,
-    data: &UiData,
+    data: &Data,
     timebarw_padding: &[u16],
     inner_rect: Rect,
 ) -> Option<LineGauge<'a>> {
@@ -122,7 +122,7 @@ pub fn timebarw<'a>(
 
 pub fn timebarw_label<'a>(
     clock: &Clock,
-    data: &UiData,
+    data: &Data,
     timebarw_padding: &[u16],
     inner_rect: Rect,
 ) -> Option<Paragraph<'a>> {

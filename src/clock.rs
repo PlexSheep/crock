@@ -20,7 +20,7 @@ use std::time::Instant;
 pub mod timebar;
 pub mod ui;
 use timebar::TimeBarLength;
-use ui::UiData;
+use ui::Data;
 
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone)]
@@ -190,7 +190,7 @@ impl Clock {
     ) -> anyhow::Result<()> {
         let tick_rate = std::time::Duration::from_millis(100);
         let mut last_tick = Instant::now();
-        let mut uidata: UiData = UiData::default();
+        let mut uidata: Data = Data::default();
         self.setup()?;
         loop {
             let raw_time = chrono::Local::now().round_subsecs(0);
@@ -251,7 +251,7 @@ impl Clock {
     fn ui(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-        data: &UiData,
+        data: &Data,
     ) -> anyhow::Result<()> {
         terminal.draw(|frame| {
             debug!("rendering the ui");
