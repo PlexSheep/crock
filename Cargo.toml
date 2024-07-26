@@ -1,6 +1,6 @@
 [package]
 name = "crock"
-version = "0.1.5"
+version = "0.2.2"
 edition = "2021"
 publish = true
 authors = ["Christoph J. Scherr <software@cscherr.de>"]
@@ -12,10 +12,23 @@ repository = "https://git.cscherr.de/PlexSheep/crock"
 keywords = ["time", "clock", "tui"]
 categories = ["date-and-time"]
 
+[features]
+default = ["desktop", "sound"]
+desktop = ["dep:notify-rust"]
+sound = ["dep:rodio"]
+
 
 [dependencies]
 anyhow = "1.0.86"
 chrono = "0.4.38"
+human-panic = "2.0.0"
+humantime = "2.1.0"
 libpt = { version = "0.6.0", features = ["cli"] }
+notify-rust = { version = "4.11.0", default-features = false, features = [
+	"d",
+], optional = true }
 ratatui = "0.27.0"
+rodio = { version = "0.19.0", optional = true, default-features = false, features = [
+	"mp3",
+] }
 tui-big-text = "0.4.5"

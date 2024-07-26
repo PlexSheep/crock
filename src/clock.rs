@@ -11,38 +11,16 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyModifiers};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Style, Stylize};
-use ratatui::widgets::{Block, LineGauge, Padding, Paragraph};
+use ratatui::widgets::{Block, Padding, Paragraph};
 use ratatui::Terminal;
+use std::collections::HashMap;
 use std::io::{Cursor, Stdout, Write};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TimeBarLength {
-    Minute,
-    Hour,
-    Custom(i128),
-    /// implementing a bar that would grow smaller would be weird, so it's a count up instead of
-    /// a countdown
-    Countup(i128),
-    Day,
-}
-
-impl TimeBarLength {
-    pub(crate) const fn as_secs(self) -> i128 {
-        match self {
-            Self::Minute => 60,
-            Self::Day => 24 * 60 * 60,
-            Self::Hour => 60 * 60,
-            Self::Custom(secs) | Self::Countup(secs) => secs,
-        }
-    }
-}
-
-impl Default for TimeBarLength {
-    fn default() -> Self {
-        Self::Minute
-    }
-}
+pub mod timebar;
+pub mod ui;
+use timebar::TimeBarLength;
+use ui::Data;
 
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone)]
@@ -78,7 +56,8 @@ pub struct Clock {
     #[clap(short = 'u', long, value_parser = humantime::parse_duration)]
     pub countdown: Option<std::time::Duration>,
     /// Play a notification sound when the countdown is up
-    #[clap(short, long)]
+    #[cfg(feature = "sound")]
+    #[clap(short, long, default_value_t = true)]
     pub sound: bool,
 
     // internal variables
@@ -86,56 +65,6 @@ pub struct Clock {
     pub(crate) last_reset: Option<DateTime<Local>>,
     #[clap(skip)]
     pub(crate) did_notify: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct UiData {
-    fdate: [String; 2],
-    ftime: [String; 2],
-    timebar_ratio: [Option<f64>; 2],
-
-    data_idx: usize,
-}
-
-impl UiData {
-    pub fn update(&mut self, fdate: String, ftime: String, timebar_ratio: Option<f64>) {
-        self.data_idx ^= 1;
-        self.fdate[self.data_idx] = fdate;
-        self.ftime[self.data_idx] = ftime;
-        self.timebar_ratio[self.data_idx] = timebar_ratio;
-        #[cfg(debug_assertions)]
-        if self.changed() {
-            trace!("update with change: {:#?}", self);
-        }
-    }
-
-    /// did the data change with the last update?
-    #[must_use]
-    #[inline]
-    pub fn changed(&self) -> bool {
-        //  the timebar ratio is discarded, so that we only render the ui when the time
-        //  (second) changes
-        self.fdate[0] != self.fdate[1] || self.ftime[0] != self.ftime[1]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn fdate(&self) -> &str {
-        &self.fdate[self.data_idx]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn ftime(&self) -> &str {
-        &self.ftime[self.data_idx]
-    }
-
-    #[must_use]
-    #[inline]
-    #[allow(clippy::missing_const_for_fn)] // no it's not const
-    pub fn timebar_ratio(&self) -> Option<f64> {
-        self.timebar_ratio[self.data_idx]
-    }
 }
 
 impl Clock {
@@ -149,13 +78,11 @@ impl Clock {
         } else if self.hour {
             Some(TimeBarLength::Hour)
         } else if self.countdown.is_some() {
-            Some(TimeBarLength::Countup(i128::from(
-                self.countdown.unwrap().as_secs(),
-            )))
+            Some(TimeBarLength::Countup(
+                self.countdown.unwrap().as_secs() as i64
+            ))
         } else if self.custom.is_some() {
-            Some(TimeBarLength::Custom(i128::from(
-                self.custom.unwrap().as_secs(),
-            )))
+            Some(TimeBarLength::Custom(self.custom.unwrap().as_secs() as i64))
         } else {
             None
         }
@@ -184,26 +111,26 @@ impl Clock {
                 }
                 TimeBarLength::Custom(_) => {
                     if since_last_reset.num_seconds() >= 1
-                        && i128::from(since_last_reset.num_seconds()) >= len.as_secs()
+                        && since_last_reset.num_seconds() >= len.as_secs()
                     {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                     }
                 }
                 TimeBarLength::Minute => {
                     if since_last_reset.num_seconds() >= 1 && Local::now().second() == 0 {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                         debug!("reset the time of the time bar (minute)");
                     }
                 }
                 TimeBarLength::Hour => {
                     if since_last_reset.num_minutes() >= 1 && Local::now().minute() == 0 {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                         debug!("reset the time of the time bar (hour)");
                     }
                 }
                 TimeBarLength::Day => {
                     if since_last_reset.num_hours() >= 1 && Local::now().hour() == 0 {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                         debug!("reset the time of the time bar (day)");
                     }
                 }
@@ -221,13 +148,17 @@ impl Clock {
                 TimeBarLength::Minute => {
                     self.last_reset = Some(
                         Local::now()
-                            .with_second(0)
+                            .round_subsecs(0)
+                            .with_second(1)
                             .expect("tried to use a time that does not exist"),
                     );
                 }
                 TimeBarLength::Hour => {
                     self.last_reset = Some(
                         Local::now()
+                            .round_subsecs(0)
+                            .with_second(1)
+                            .expect("tried to use a time that does not exist")
                             .with_minute(0)
                             .expect("tried to use a time that does not exist"),
                     );
@@ -235,6 +166,11 @@ impl Clock {
                 TimeBarLength::Day => {
                     self.last_reset = Some(
                         Local::now()
+                            .round_subsecs(0)
+                            .with_second(1)
+                            .expect("tried to use a time that does not exist")
+                            .with_minute(0)
+                            .expect("tried to use a time that does not exist")
                             .with_hour(0)
                             .expect("tried to use a time that does not exist"),
                     );
@@ -261,9 +197,9 @@ impl Clock {
         mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     ) -> anyhow::Result<()> {
-        let tick_rate = Duration::from_millis(100);
+        let tick_rate = std::time::Duration::from_millis(100);
         let mut last_tick = Instant::now();
-        let mut uidata: UiData = UiData::default();
+        let mut uidata: Data = Data::default();
         self.setup()?;
         loop {
             let raw_time = chrono::Local::now().round_subsecs(0);
@@ -290,10 +226,12 @@ impl Clock {
             // 01:30 is 50%, 01:59 is 98%, 01:60 does not exist because that's how counting from
             // 0 works.
 
+            let now = raw_time + chrono::Duration::seconds(1);
             uidata.update(
+                now,
                 splits[0].clone(),
                 splits[1].clone(),
-                self.timebar_ratio(raw_time + chrono::Duration::seconds(1)),
+                self.timebar_ratio(now),
             );
             if uidata.changed() {
                 self.ui(terminal, &uidata)?;
@@ -322,7 +260,7 @@ impl Clock {
     fn ui(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-        data: &UiData,
+        data: &Data,
     ) -> anyhow::Result<()> {
         terminal.draw(|frame| {
             debug!("rendering the ui");
@@ -338,12 +276,12 @@ impl Clock {
                 .title_bottom(env!("CARGO_PKG_VERSION"))
                 .title_alignment(Alignment::Center)
                 .title_style(Style::new().bold());
-            let a = space.inner(root);
+            let inner_rect = space.inner(root);
             frame.render_widget(space, root);
-            let parts = Self::partition(a);
+            let parts = Self::partition(inner_rect);
 
             let mut clockw = tui_big_text::BigText::builder();
-            if a.width > 80 {
+            if inner_rect.width > 80 {
                 clockw.pixel_size(tui_big_text::PixelSize::Full);
             } else {
                 clockw.pixel_size(tui_big_text::PixelSize::Quadrant);
@@ -359,52 +297,24 @@ impl Clock {
             // render the timebar which counts up to the full minute and so on
             //
             // Will not be rendered if it is None
-            let timebarw: Option<LineGauge> = if self.timebar_len().is_some() {
-                debug!("time bar ration: {:?}", data.timebar_ratio());
-                let ratio = data.timebar_ratio().unwrap();
-
-                if !self.did_notify && (ratio - 1.0).abs() < 0.000_001 {
-                    if let Some(TimeBarLength::Countup(_)) = self.timebar_len() {
-                        let _ = self.notify().inspect_err(|e| {
-                            error!("could not notify: {e}");
-                            debug!("complete error: {e:#?}");
-                        });
-                        self.did_notify = true;
-                    }
-                }
-
-                let timebarw = LineGauge::default()
-                    .filled_style(if self.did_notify {
-                        Style::default()
-                            .slow_blink()
-                            .bold()
-                            .underlined()
-                            .yellow()
-                            .crossed_out()
-                    } else {
-                        Style::default().blue()
-                    })
-                    .unfilled_style(Style::default())
-                    .block(Block::default().padding(Padding::right(if a.width > 80 {
-                        (f32::from(parts[2].width) * 0.43) as u16
-                    } else {
-                        (f32::from(parts[2].width) * 0.25) as u16
-                    })))
-                    .ratio(ratio);
-                Some(timebarw)
-            } else {
-                None
-            };
+            let timebarw_padding = [
+                (f32::from(parts["timebarw"].width) * 0.43) as u16,
+                (f32::from(parts["timebarw"].width) * 0.25) as u16,
+            ];
+            let timebarw = ui::timebarw(self, data, &timebarw_padding, inner_rect);
+            let timebarw_label: Option<Paragraph> =
+                ui::timebarw_label(self, data, &timebarw_padding, inner_rect);
 
             // render the small date
             let datew = Paragraph::new(data.fdate())
                 .blue()
                 .block(Block::default().padding(Padding::right(2)))
                 .alignment(Alignment::Right);
-            frame.render_widget(&timebarw, parts[2]);
-            frame.render_widget(datew, parts[1]);
+            frame.render_widget(&timebarw, parts["timebarw"]);
+            frame.render_widget(&timebarw_label, parts["timebarw_label"]);
+            frame.render_widget(datew, parts["datew"]);
             // render the clock
-            frame.render_widget(clockw, parts[0]);
+            frame.render_widget(clockw, parts["clockw"]);
         })?;
         debug!("done rendering the ui");
         Ok(())
@@ -445,9 +355,6 @@ impl Clock {
             // NOTE: sadly, notify_rust does not (yet) support KDE plasma, because
             // they have a weird way of making sounds and notifications in general
             // work. At least we get a little notification.
-            //
-            // TODO: add something to make a sound without the notification system,
-            // as that is not reliable but the user might depend on it.
 
             // only play this when we don't use built in sound, this
             // isn't as consistent
@@ -481,7 +388,7 @@ impl Clock {
         std::io::stdout().flush()?;
         Ok(())
     }
-    fn partition(r: Rect) -> Vec<Rect> {
+    fn partition(r: Rect) -> HashMap<&'static str, Rect> {
         let part = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -489,6 +396,8 @@ impl Clock {
                 Constraint::Length(if r.width > 80 { 8 } else { 5 }),
             ])
             .split(r);
+        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_possible_truncation)]
         let hlen_date: u16 = (f32::from(part[1].width) * 0.35) as u16;
         let subparts = Layout::default()
             .direction(Direction::Horizontal)
@@ -498,6 +407,16 @@ impl Clock {
             ])
             .split(part[0]);
 
-        vec![part[1], subparts[0], subparts[1]]
+        let timebarw_spaces = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(1), Constraint::Length(1)])
+            .split(subparts[1]);
+
+        HashMap::from([
+            ("clockw", part[1]),
+            ("timebarw", timebarw_spaces[0]),
+            ("timebarw_label", timebarw_spaces[1]),
+            ("datew", subparts[0]),
+        ])
     }
 }
