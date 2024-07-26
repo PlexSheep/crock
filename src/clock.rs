@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
 #![allow(clippy::question_mark_used)]
 
-use chrono::{DateTime, Local, SubsecRound, Timelike};
+use chrono::{DateTime, Local, SubsecRound, TimeDelta, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
@@ -113,24 +113,24 @@ impl Clock {
                     if since_last_reset.num_seconds() >= 1
                         && since_last_reset.num_seconds() >= len.as_secs()
                     {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                     }
                 }
                 TimeBarLength::Minute => {
                     if since_last_reset.num_seconds() >= 1 && Local::now().second() == 0 {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                         debug!("reset the time of the time bar (minute)");
                     }
                 }
                 TimeBarLength::Hour => {
                     if since_last_reset.num_minutes() >= 1 && Local::now().minute() == 0 {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                         debug!("reset the time of the time bar (hour)");
                     }
                 }
                 TimeBarLength::Day => {
                     if since_last_reset.num_hours() >= 1 && Local::now().hour() == 0 {
-                        self.last_reset = Some(Local::now());
+                        self.last_reset = Some(Local::now().round_subsecs(0));
                         debug!("reset the time of the time bar (day)");
                     }
                 }
@@ -148,13 +148,17 @@ impl Clock {
                 TimeBarLength::Minute => {
                     self.last_reset = Some(
                         Local::now()
-                            .with_second(0)
+                            .round_subsecs(0)
+                            .with_second(1)
                             .expect("tried to use a time that does not exist"),
                     );
                 }
                 TimeBarLength::Hour => {
                     self.last_reset = Some(
                         Local::now()
+                            .round_subsecs(0)
+                            .with_second(1)
+                            .expect("tried to use a time that does not exist")
                             .with_minute(0)
                             .expect("tried to use a time that does not exist"),
                     );
@@ -162,6 +166,11 @@ impl Clock {
                 TimeBarLength::Day => {
                     self.last_reset = Some(
                         Local::now()
+                            .round_subsecs(0)
+                            .with_second(1)
+                            .expect("tried to use a time that does not exist")
+                            .with_minute(0)
+                            .expect("tried to use a time that does not exist")
                             .with_hour(0)
                             .expect("tried to use a time that does not exist"),
                     );

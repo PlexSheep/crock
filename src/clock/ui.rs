@@ -8,6 +8,7 @@ use crate::clock::timebar::TimeBarLength;
 
 use super::Clock;
 
+// TODO: make this a ringbuffer with a custom struct inside?
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Data {
     now: [DateTime<Local>; 2],
@@ -142,6 +143,12 @@ pub fn timebarw_label<'a>(
                     )
                 }
             }
+            TimeBarLength::Hour => humantime::Duration::from(
+                data.now()
+                    .signed_duration_since(last_reset)
+                    .to_std()
+                    .unwrap(),
+            ),
             _ => humantime::Duration::from(
                 data.now()
                     .round_subsecs(0)
