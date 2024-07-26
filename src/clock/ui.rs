@@ -61,6 +61,8 @@ impl Data {
 
     #[must_use]
     #[inline]
+    #[allow(clippy::missing_const_for_fn)] // why should it be okay to make this const? This is
+                                           // a custom ringbuffer!
     pub fn now(&self) -> &DateTime<Local> {
         &self.now[self.idx]
     }

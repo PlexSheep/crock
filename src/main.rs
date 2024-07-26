@@ -1,3 +1,5 @@
+#![allow(missing_docs)] // this is not a library crate
+
 use std::io;
 
 use libpt::cli::clap::Parser;
