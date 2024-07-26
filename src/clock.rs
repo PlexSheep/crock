@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
 #![allow(clippy::question_mark_used)]
 
-use chrono::{DateTime, Local, SubsecRound, TimeDelta, Timelike};
+use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
