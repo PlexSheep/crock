@@ -1,5 +1,10 @@
 #![warn(clippy::pedantic, clippy::style, clippy::nursery)]
+// That's useful and sometimes I don't need extra stuff
 #![allow(clippy::question_mark_used)]
+// allows us to cast u64 to i64, if the number is too high
+// enough time has passed that I don't care
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)] // it should only be positive anyway
 
 use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
@@ -257,6 +262,7 @@ impl Clock {
     fn on_tick(&mut self) {
         self.maybe_reset_since_zero();
     }
+    #[allow(clippy::cast_possible_truncation)] // if we have that much padding, please truncate
     fn ui(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
