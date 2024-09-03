@@ -27,12 +27,12 @@ pub struct Data {
 impl Data {
     pub fn new(timebar_type: TimeBarLength) -> Self {
         let mut this = Self {
-            now: [Default::default(); 2],
+            now: [DateTime::default(); 2],
             fdate: [String::new(), String::new()],
             ftime: [String::new(), String::new()],
-            timebar_ratio: [Default::default(); 2],
+            timebar_ratio: [Option::default(); 2],
             started_at: Local::now(),
-            idx: Default::default(),
+            idx: usize::default(),
 
             timebar_type,
         };

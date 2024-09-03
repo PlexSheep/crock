@@ -70,8 +70,6 @@ pub struct Clock {
     pub(crate) last_reset: Option<DateTime<Local>>,
     #[clap(skip)]
     pub(crate) did_notify: bool,
-    #[clap(skip)]
-    pub(crate) started_at: DateTime<Local>,
 }
 
 impl Clock {
