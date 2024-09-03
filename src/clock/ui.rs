@@ -28,8 +28,8 @@ impl Data {
     pub fn new(timebar_type: TimeBarLength) -> Self {
         let mut this = Self {
             now: [Default::default(); 2],
-            fdate: ["".to_string(), "".to_string()],
-            ftime: ["".to_string(), "".to_string()],
+            fdate: [String::new(), String::new()],
+            ftime: [String::new(), String::new()],
             timebar_ratio: [Default::default(); 2],
             started_at: Local::now(),
             idx: Default::default(),

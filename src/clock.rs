@@ -6,7 +6,7 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)] // it should only be positive anyway
 
-use chrono::{Date, DateTime, Local, SubsecRound, Timelike};
+use chrono::{DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
