@@ -9,6 +9,7 @@ use crate::clock::timebar::TimeBarLength;
 use super::Clock;
 
 pub const TIME_FORMAT: &str = "%H:%M:%S";
+pub const TIME_FORMAT_SHORT: &str = "%H:%M";
 
 // TODO: make this a ringbuffer with a custom struct inside?
 #[derive(Debug, Clone, PartialEq)]
@@ -193,17 +194,17 @@ pub fn timebarw_label<'a>(
         // example with `-o` #17
         .checked_add_signed(len.into())
         .expect("could not calculate when the countdown finishes")
-        .format(TIME_FORMAT);
+        .format(TIME_FORMAT_SHORT);
 
         let text: String = match clock.timebar_len().unwrap() {
             TimeBarLength::Timer => format!("{} + {time_now}", data.started_at.format(TIME_FORMAT)),
             TimeBarLength::Countup(_) | TimeBarLength::Custom(_) => format!(
                 "{time_now} / {len} | {} -> {until}",
-                last_reset.format(TIME_FORMAT)
+                last_reset.format(TIME_FORMAT_SHORT)
             ),
             _ => format!(
                 "{time_now} / {len} | {} -> {until}",
-                last_reset.with_second(0).unwrap().format(TIME_FORMAT)
+                last_reset.with_second(0).unwrap().format(TIME_FORMAT_SHORT)
             ),
         };
 
