@@ -90,7 +90,7 @@ fn mock_tests() {
         info!("0s=0.0");
     }
     {
-        let mut data = Data::default();
+        let mut data = Data::new(clock::timebar::TimeBarLength::Day);
         let now = Local::now();
         data.update(now, "date".to_owned(), "time".to_owned(), Some(0.1));
         assert_eq!(data.timebar_ratio(), Some(0.1));

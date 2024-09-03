@@ -6,7 +6,7 @@
 #![allow(clippy::cast_possible_wrap)]
 #![allow(clippy::cast_sign_loss)] // it should only be positive anyway
 
-use chrono::{DateTime, Local, SubsecRound, Timelike};
+use chrono::{Date, DateTime, Local, SubsecRound, Timelike};
 use clap::Parser;
 use libpt::cli::args::HELP_TEMPLATE;
 use libpt::cli::clap::ArgGroup;
@@ -30,7 +30,7 @@ use ui::Data;
 /// Make your terminal into a big clock
 #[derive(Parser, Debug, Clone)]
 #[command(help_template = HELP_TEMPLATE, author, version)]
-#[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom", "countdown"]),))]
+#[clap(group( ArgGroup::new("timebarlen") .args(&["minute","day", "hour", "custom", "countdown", "timer"]),))]
 #[allow(clippy::struct_excessive_bools)] // the struct is for cli parsing and we already use an
                                          // ArgGroup
 pub struct Clock {
@@ -70,6 +70,8 @@ pub struct Clock {
     pub(crate) last_reset: Option<DateTime<Local>>,
     #[clap(skip)]
     pub(crate) did_notify: bool,
+    #[clap(skip)]
+    pub(crate) started_at: DateTime<Local>,
 }
 
 impl Clock {
@@ -82,6 +84,8 @@ impl Clock {
             Some(TimeBarLength::Day)
         } else if self.hour {
             Some(TimeBarLength::Hour)
+        } else if self.timer {
+            Some(TimeBarLength::Timer)
         } else if self.countdown.is_some() {
             Some(TimeBarLength::Countup(
                 self.countdown.unwrap().as_secs() as i64
@@ -111,7 +115,7 @@ impl Clock {
         if let Some(len) = self.timebar_len() {
             let since_last_reset = Local::now().signed_duration_since(self.last_reset.unwrap());
             match len {
-                TimeBarLength::Countup(_) => {
+                TimeBarLength::Countup(_) | TimeBarLength::Timer => {
                     // the count up should not reset. If the time is over, just keep it at 100%
                 }
                 TimeBarLength::Custom(_) => {
@@ -147,7 +151,7 @@ impl Clock {
         if let Some(len) = self.timebar_len() {
             trace!("Local Time: {}", Local::now());
             match len {
-                TimeBarLength::Custom(_) | TimeBarLength::Countup(_) => {
+                TimeBarLength::Custom(_) | TimeBarLength::Countup(_) | TimeBarLength::Timer => {
                     self.last_reset = Some(Local::now());
                 }
                 TimeBarLength::Minute => {
@@ -204,7 +208,7 @@ impl Clock {
     ) -> anyhow::Result<()> {
         let tick_rate = std::time::Duration::from_millis(100);
         let mut last_tick = Instant::now();
-        let mut uidata: Data = Data::default();
+        let mut uidata: Data = Data::new(self.timebar_len().unwrap());
         self.setup()?;
         loop {
             let raw_time = chrono::Local::now().round_subsecs(0);

@@ -4,6 +4,7 @@ use chrono::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBarLength {
+    Timer,
     Minute,
     Hour,
     Custom(i64),
@@ -19,6 +20,7 @@ impl TimeBarLength {
             Self::Minute => 60,
             Self::Day => 24 * 60 * 60,
             Self::Hour => 60 * 60,
+            Self::Timer => 1,
             Self::Custom(secs) | Self::Countup(secs) => secs,
         }
     }
@@ -38,6 +40,9 @@ impl Default for TimeBarLength {
 
 impl Display for TimeBarLength {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if *self == Self::Timer {
+            return write!(f, "");
+        }
         let buf = match self {
             Self::Minute => humantime::Duration::from(
                 Duration::minutes(1)
@@ -59,6 +64,7 @@ impl Display for TimeBarLength {
                     .to_std()
                     .expect("could not convert chrono time to std time"),
             ),
+            Self::Timer => unreachable!(),
         };
         write!(f, "{buf}")
     }

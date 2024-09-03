@@ -8,18 +8,37 @@ use crate::clock::timebar::TimeBarLength;
 
 use super::Clock;
 
+pub const TIME_FORMAT: &str = "%H:%M:%S";
+
 // TODO: make this a ringbuffer with a custom struct inside?
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Data {
     now: [DateTime<Local>; 2],
     fdate: [String; 2],
     ftime: [String; 2],
     timebar_ratio: [Option<f64>; 2],
 
+    timebar_type: TimeBarLength,
+    started_at: DateTime<Local>,
+
     idx: usize,
 }
 
 impl Data {
+    pub fn new(timebar_type: TimeBarLength) -> Self {
+        let mut this = Self {
+            now: [Default::default(); 2],
+            fdate: ["".to_string(), "".to_string()],
+            ftime: ["".to_string(), "".to_string()],
+            timebar_ratio: [Default::default(); 2],
+            started_at: Local::now(),
+            idx: Default::default(),
+
+            timebar_type,
+        };
+        this.started_at = this.started_at.round_subsecs(0);
+        this
+    }
     pub fn update(
         &mut self,
         now: DateTime<Local>,
@@ -71,6 +90,9 @@ impl Data {
     #[inline]
     #[allow(clippy::missing_const_for_fn)] // no it's not const
     pub fn timebar_ratio(&self) -> Option<f64> {
+        if self.timebar_type == TimeBarLength::Timer {
+            return Some(0.0);
+        }
         self.timebar_ratio[self.idx]
     }
 }
@@ -171,8 +193,21 @@ pub fn timebarw_label<'a>(
         // example with `-o` #17
         .checked_add_signed(len.into())
         .expect("could not calculate when the countdown finishes")
-        .format("%H:%M:%S");
-        Paragraph::new(format!("{time_now} / {len} ({until})"))
+        .format(TIME_FORMAT);
+
+        let text: String = match clock.timebar_len().unwrap() {
+            TimeBarLength::Timer => format!("{} + {time_now}", data.started_at.format(TIME_FORMAT)),
+            TimeBarLength::Countup(_) | TimeBarLength::Custom(_) => format!(
+                "{time_now} / {len} | {} -> {until}",
+                last_reset.format(TIME_FORMAT)
+            ),
+            _ => format!(
+                "{time_now} / {len} | {} -> {until}",
+                last_reset.with_second(0).unwrap().format(TIME_FORMAT)
+            ),
+        };
+
+        Paragraph::new(text)
             .alignment(Alignment::Center)
             .block(
                 Block::default().padding(Padding::right(if inner_rect.width > 80 {
