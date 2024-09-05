@@ -222,7 +222,7 @@ impl Clock {
     ) -> anyhow::Result<()> {
         let tick_rate = std::time::Duration::from_millis(100);
         let mut last_tick = Instant::now();
-        let mut uidata: Data = Data::new(self.timebar_len().unwrap());
+        let mut uidata: Data = Data::new(self.timebar_len());
         self.setup()?;
         loop {
             let raw_time = chrono::Local::now().round_subsecs(0);

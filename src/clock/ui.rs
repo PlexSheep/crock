@@ -19,14 +19,14 @@ pub struct Data {
     ftime: [String; 2],
     timebar_ratio: [Option<f64>; 2],
 
-    timebar_type: TimeBarLength,
+    timebar_type: Option<TimeBarLength>,
     started_at: DateTime<Local>,
 
     idx: usize,
 }
 
 impl Data {
-    pub fn new(timebar_type: TimeBarLength) -> Self {
+    pub fn new(timebar_type: Option<TimeBarLength>) -> Self {
         let mut this = Self {
             now: [DateTime::default(); 2],
             fdate: [String::new(), String::new()],
@@ -91,7 +91,7 @@ impl Data {
     #[inline]
     #[allow(clippy::missing_const_for_fn)] // no it's not const
     pub fn timebar_ratio(&self) -> Option<f64> {
-        if self.timebar_type == TimeBarLength::Timer {
+        if self.timebar_type.is_some() && self.timebar_type.unwrap() == TimeBarLength::Timer {
             return Some(0.0);
         }
         self.timebar_ratio[self.idx]
