@@ -37,6 +37,8 @@ jobs:
           echo '[registries.cscherr]' >> ~/.cargo/config.toml
           echo 'index = "https://git.cscherr.de/PlexSheep/_cargo-index.git"' >> ~/.cargo/config.toml
           cat ~/.cargo/config.toml
+      - name: install additional system dependencies
+        run: sudo apt-get install -y libasound2-dev libdbus-1-dev
       - name: cargo clippy check
         run: cargo clippy --all-features --all-targets --workspace
       - name: cargo clippy fix
