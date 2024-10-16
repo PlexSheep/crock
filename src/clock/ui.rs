@@ -9,6 +9,7 @@ use crate::clock::timebar::TimeBarLength;
 use super::Clock;
 
 pub const TIME_FORMAT: &str = "%H:%M:%S";
+pub const TIME_FORMAT_SHORT: &str = "%H:%M";
 
 // TODO: make this a ringbuffer with a custom struct inside?
 #[derive(Debug, Clone, PartialEq)]
@@ -18,21 +19,21 @@ pub struct Data {
     ftime: [String; 2],
     timebar_ratio: [Option<f64>; 2],
 
-    timebar_type: TimeBarLength,
+    timebar_type: Option<TimeBarLength>,
     started_at: DateTime<Local>,
 
     idx: usize,
 }
 
 impl Data {
-    pub fn new(timebar_type: TimeBarLength) -> Self {
+    pub fn new(timebar_type: Option<TimeBarLength>) -> Self {
         let mut this = Self {
-            now: [Default::default(); 2],
+            now: [DateTime::default(); 2],
             fdate: [String::new(), String::new()],
             ftime: [String::new(), String::new()],
-            timebar_ratio: [Default::default(); 2],
+            timebar_ratio: [Option::default(); 2],
             started_at: Local::now(),
-            idx: Default::default(),
+            idx: usize::default(),
 
             timebar_type,
         };
@@ -90,7 +91,7 @@ impl Data {
     #[inline]
     #[allow(clippy::missing_const_for_fn)] // no it's not const
     pub fn timebar_ratio(&self) -> Option<f64> {
-        if self.timebar_type == TimeBarLength::Timer {
+        if self.timebar_type.is_some() && self.timebar_type.unwrap() == TimeBarLength::Timer {
             return Some(0.0);
         }
         self.timebar_ratio[self.idx]
@@ -193,17 +194,17 @@ pub fn timebarw_label<'a>(
         // example with `-o` #17
         .checked_add_signed(len.into())
         .expect("could not calculate when the countdown finishes")
-        .format(TIME_FORMAT);
+        .format(TIME_FORMAT_SHORT);
 
         let text: String = match clock.timebar_len().unwrap() {
             TimeBarLength::Timer => format!("{} + {time_now}", data.started_at.format(TIME_FORMAT)),
             TimeBarLength::Countup(_) | TimeBarLength::Custom(_) => format!(
                 "{time_now} / {len} | {} -> {until}",
-                last_reset.format(TIME_FORMAT)
+                last_reset.format(TIME_FORMAT_SHORT)
             ),
             _ => format!(
                 "{time_now} / {len} | {} -> {until}",
-                last_reset.with_second(0).unwrap().format(TIME_FORMAT)
+                last_reset.with_second(0).unwrap().format(TIME_FORMAT_SHORT)
             ),
         };
 

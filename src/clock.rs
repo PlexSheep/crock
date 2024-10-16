@@ -70,8 +70,6 @@ pub struct Clock {
     pub(crate) last_reset: Option<DateTime<Local>>,
     #[clap(skip)]
     pub(crate) did_notify: bool,
-    #[clap(skip)]
-    pub(crate) started_at: DateTime<Local>,
 }
 
 impl Clock {
@@ -119,7 +117,8 @@ impl Clock {
                     // the count up should not reset. If the time is over, just keep it at 100%
                 }
                 TimeBarLength::Custom(_) => {
-                    if since_last_reset.num_seconds() >= 1
+                    // BUG: this is not consistent, sometimes leads to wrong seconds
+                    if since_last_reset.num_milliseconds() >= 100
                         && since_last_reset.num_seconds() >= len.as_secs()
                     {
                         self.last_reset = Some(Local::now().round_subsecs(0));
@@ -127,19 +126,34 @@ impl Clock {
                 }
                 TimeBarLength::Minute => {
                     if since_last_reset.num_seconds() >= 1 && Local::now().second() == 0 {
-                        self.last_reset = Some(Local::now().round_subsecs(0));
+                        self.last_reset = Some(
+                            Local::now()
+                                .round_subsecs(0)
+                                .with_second(1)
+                                .expect("tried to use a time that does not exist"),
+                        );
                         debug!("reset the time of the time bar (minute)");
                     }
                 }
                 TimeBarLength::Hour => {
                     if since_last_reset.num_minutes() >= 1 && Local::now().minute() == 0 {
-                        self.last_reset = Some(Local::now().round_subsecs(0));
+                        self.last_reset = Some(
+                            Local::now()
+                                .round_subsecs(0)
+                                .with_second(1)
+                                .expect("tried to use a time that does not exist"),
+                        );
                         debug!("reset the time of the time bar (hour)");
                     }
                 }
                 TimeBarLength::Day => {
                     if since_last_reset.num_hours() >= 1 && Local::now().hour() == 0 {
-                        self.last_reset = Some(Local::now().round_subsecs(0));
+                        self.last_reset = Some(
+                            Local::now()
+                                .round_subsecs(0)
+                                .with_second(1)
+                                .expect("tried to use a time that does not exist"),
+                        );
                         debug!("reset the time of the time bar (day)");
                     }
                 }
@@ -208,7 +222,7 @@ impl Clock {
     ) -> anyhow::Result<()> {
         let tick_rate = std::time::Duration::from_millis(100);
         let mut last_tick = Instant::now();
-        let mut uidata: Data = Data::new(self.timebar_len().unwrap());
+        let mut uidata: Data = Data::new(self.timebar_len());
         self.setup()?;
         loop {
             let raw_time = chrono::Local::now().round_subsecs(0);
@@ -408,7 +422,7 @@ impl Clock {
             .split(r);
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_possible_truncation)]
-        let hlen_date: u16 = (f32::from(part[1].width) * 0.35) as u16;
+        let hlen_date: u16 = (f32::from(part[1].width) * 0.32) as u16;
         let subparts = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
