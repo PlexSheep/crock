@@ -23,6 +23,8 @@ jobs:
           fetch-depth: 0
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: install additional system dependencies
+        run: sudo apt-get install -y libasound2-dev libdbus-1-dev
       - name: Run release-plz
         uses: MarcoIeni/release-plz-action@v0.5
         with:
